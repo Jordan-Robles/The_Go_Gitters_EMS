@@ -4,6 +4,10 @@ EMS Lab 2 Group 2
 */
 
 #include <Arduino.h>
+#include <DFRobot_BMI160.h>
+DFRobot_BMI160 bmi160;
+
+const int8_t i2c_addr = 0x69;
 
 //Setting input pins for the ADXL to the Arduino nano
 const int x = A0;
@@ -49,6 +53,14 @@ int currentCase = 0; // Set case = 0 to initialise system to starting profile
 
 
 void setup() {
+
+  Serial.begin(115200); //have it set as 112500 as of the moment to use with my existing BMI160 Accelerometer jsut to test code
+   
+  delay(100);
+
+  bmi160.softReset();
+  bmi160.I2cInit(i2c_addr);
+
   // Set pinMode for x, y, z pins as INPUT
   pinMode(x, INPUT);
   pinMode(y,INPUT);
@@ -65,7 +77,7 @@ void setup() {
   pinMode(led2,OUTPUT);
   pinMode(led3,OUTPUT);
 
-  Serial.begin(115200); //have it set as 112500 as of the moment to use with my existing BMI160 Accelerometer jsut to test code
+
 
 }
 
