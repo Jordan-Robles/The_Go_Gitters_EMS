@@ -5,9 +5,11 @@ EMS Lab 2 Group 2
 
 #include <Arduino.h>
 #include <DFRobot_BMI160.h>
-DFRobot_BMI160 bmi160;
 
+//Creating accelerometer object and relvent variables
+DFRobot_BMI160 bmi160;
 const int8_t i2c_addr = 0x69;
+int16_t accel[3] = {0};
 
 //Setting input pins for the ADXL to the Arduino nano
 const int x = A0;
@@ -20,9 +22,9 @@ float yAxis = 0;
 float zAxis = 0;
 
 // Self test stuff
-int selfTestCount[] = {0, 0, 0}; // used to keep track of seft test pins
+int selfTestCount[3] = {0}; // used to keep track of seft test pins
 int selftTestState = 0; //used to iterate through each axis test state for now till i develop a function to handle whole sub-Routine
-float xArray[];
+float Array[3] = {0};
 int sampleIndex = 0;
 const unsigned long selfTestInterval = 1000; //gives us 3 seconds to read the axis value and determine if the sensor is working
 
@@ -82,6 +84,19 @@ void setup() {
 }
 
 
+bool serialButton(){
+  if(Serial.available()){
+    char c = Serial.read();
+    if(c == 's'){
+      return true;
+    }
+    else{
+      return false;
+    }
+  }
+}
+
+
 float averageArray(float array[], int size){
   long sum = 0;
   for(int i = 0; i <size; i++){
@@ -95,22 +110,27 @@ float averageArray(float array[], int size){
 int selfTest(const int axis, int testCount){
   currentTime = millis();
   if(currentTime - previousTime >= selfTestInterval && sampleIndex < 5){ //takes a sample every 1 second till a total of 5 samples is taken
-    float reading = analogRead(axis);
-    xArray[sampleIndex] = reading;
+    //float reading = analogRead(axis); //uncommet for ADXL
+    bmi160.getAccelData(accel);
+    float reading = accel[testCount] / 16384.0;
+    Array[sampleIndex] = reading;
     sampleIndex += 1;
     previousTime = currentTime;
+    Serial.println(reading);
   }
+  else if(sampleIndex >= 5){
+    float averageReading = averageArray(Array, 5);
+    sampleIndex = 0;
 
-  float averageReading = averageArray(xArray, 5);
+    if(averageReading > 0.8 && averageReading < 1.2){// x in range of expected x value
 
-  if(averageReading > 1 && averageReading < 1.5){// x in range of expected x value
-
-    Serial.println("axis Good");
-    selfTestCount[testCount] = 1;
+      Serial.println("axis Good");
+      selfTestCount[testCount] = 1;
+    }
+    else{
+      Serial.println("axis no Good");
+    } 
   }
-  else{
-    Serial.println("axis no Good");
-  } 
   return selftTestState += 1;
 }
 
@@ -119,7 +139,6 @@ int selfTest(const int axis, int testCount){
 void loop() {
   switch(currentCase){
     case 0: // testing BMI160
-
     if(digitalRead(button1) == HIGH){//Self test button pressed == HIGH
       Serial.println("Self Test initiaed");
       previousTime = millis();
@@ -133,7 +152,7 @@ void loop() {
     
       if(selftTestState == 0){ // xAxis
         Serial.println("Place Device with arrow pointing to * and press action button to continue");
-        if(digitalRead(button3) == HIGH){
+        if(serialButton){ //replace with digitalRead(button3) ==
           Serial.println("Starting...");
         }
         selfTest(xAxis, selftTestState);
@@ -141,7 +160,7 @@ void loop() {
 
       else if(selftTestState == 1){ // yAxis
         Serial.println("Place Device with arrow pointing to * and press action button to continue");
-        if(digitalRead(button3) == HIGH){
+        if(serialButton){
           Serial.println("Starting...");
         }
         selfTest(yAxis, selftTestState);
@@ -149,10 +168,10 @@ void loop() {
 
       else if(selftTestState == 2){ // zAxis
         Serial.println("Place Device with arrow pointing to * and press action button to continue");
-        if(digitalRead(button3) == HIGH){
+        if(serialButton){
           Serial.println("Starting...");
         }        
-        selfTest(yAxis, selftTestState);
+        selfTest(zAxis, selftTestState);
       }
 
     break;
