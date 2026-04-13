@@ -26,6 +26,7 @@ int selfTestCount[3] = {0}; // used to keep track of seft test pins
 int selftTestState = 0; //used to iterate through each axis test state for now till i develop a function to handle whole sub-Routine
 float Array[3] = {0};
 int sampleIndex = 0;
+bool selfTestRunning = false;
 const unsigned long selfTestInterval = 1000; //gives us 3 seconds to read the axis value and determine if the sensor is working
 
 
@@ -34,6 +35,7 @@ const int button1 = 2; // Mode = toggles between each sub routine
 const int button2 = 3; // Next = insdie each subroutine we can flicker between different data to be displayed
 const int button3 = 4; //Action button = COnfirms mode selection, start and stop
 
+bool buttonPressed = false;
 //Setting pins for LED
 const int led1 = 7;
 const int led2 = 6;
@@ -51,6 +53,8 @@ unsigned long previousTime =0;
 
 int currentCase = 0; // Set case = 0 to initialise system to starting profile
 
+//debugging
+bool printed = false;
 
 
 
@@ -87,13 +91,9 @@ void setup() {
 bool serialButton(){
   if(Serial.available()){
     char c = Serial.read();
-    if(c == 's'){
-      return true;
-    }
-    else{
-      return false;
-    }
+    return (c == 'w');
   }
+  return false;
 }
 
 
@@ -107,7 +107,7 @@ float averageArray(float array[], int size){
   return average;
 }
 
-int selfTest(const int axis, int testCount){
+int selfTest(int testCount){
   currentTime = millis();
   if(currentTime - previousTime >= selfTestInterval && sampleIndex < 5){ //takes a sample every 1 second till a total of 5 samples is taken
     //float reading = analogRead(axis); //uncommet for ADXL
@@ -122,16 +122,18 @@ int selfTest(const int axis, int testCount){
     float averageReading = averageArray(Array, 5);
     sampleIndex = 0;
 
-    if(averageReading > 0.8 && averageReading < 1.2){// x in range of expected x value
-
+    if(averageReading > 0.8 && averageReading < 1.2 && selfTestCount[testCount] == 0){// x in range of expected x value
       Serial.println("axis Good");
       selfTestCount[testCount] = 1;
+
     }
     else{
       Serial.println("axis no Good");
     } 
+    selfTestRunning = false;
+    selftTestState += 1;
+    printed = false;
   }
-  return selftTestState += 1;
 }
 
 
@@ -139,39 +141,70 @@ int selfTest(const int axis, int testCount){
 void loop() {
   switch(currentCase){
     case 0: // testing BMI160
-    if(digitalRead(button1) == HIGH){//Self test button pressed == HIGH
+    if(serialButton() == true){//Self test button pressed == HIGH
       Serial.println("Self Test initiaed");
       previousTime = millis();
       currentCase = 1; // Test X 
-      //Print to Screen
+
     }
-    else // Continue with step tracking routine 
     break;
 
     case 1: // Self test Routine
     
       if(selftTestState == 0){ // xAxis
-        Serial.println("Place Device with arrow pointing to * and press action button to continue");
-        if(serialButton){ //replace with digitalRead(button3) ==
-          Serial.println("Starting...");
+        if(!printed){
+          Serial.println("Place Device with arrow pointing to * and press action button to continue");
+          printed = true;
         }
-        selfTest(xAxis, selftTestState);
+        buttonPressed = serialButton();
+        if(buttonPressed == true && selfTestRunning == false){ //replace with digitalRead(button3) ==
+          printed = false;
+          Serial.println("Starting xAxis");
+          selfTestRunning = true;
+        
+        }
+        else if(selfTestRunning == true){
+          selfTest(selftTestState);
+        }
       }
 
       else if(selftTestState == 1){ // yAxis
-        Serial.println("Place Device with arrow pointing to * and press action button to continue");
-        if(serialButton){
-          Serial.println("Starting...");
+        if(!printed){
+          Serial.println("Place Device with arrow pointing to * and press action button to continue");
+          printed = true;
         }
-        selfTest(yAxis, selftTestState);
+        buttonPressed = serialButton();
+        if(buttonPressed == true && selfTestRunning == false){ //replace with digitalRead(button3) ==
+          printed = false;
+          Serial.println("Starting yAxis");
+          selfTestRunning = true;
+        
+        }
+        else if(selfTestRunning == true){
+          selfTest(selftTestState);
+        }
       }
 
       else if(selftTestState == 2){ // zAxis
-        Serial.println("Place Device with arrow pointing to * and press action button to continue");
-        if(serialButton){
-          Serial.println("Starting...");
-        }        
-        selfTest(zAxis, selftTestState);
+                if(!printed){
+          Serial.println("Place Device with arrow pointing to * and press action button to continue");
+          printed = true;
+        }
+        buttonPressed = serialButton();
+        if(buttonPressed == true && selfTestRunning == false){ //replace with digitalRead(button3) ==
+          printed = false;
+          Serial.println("Starting zAxis");
+          selfTestRunning = true;
+        
+        }
+        else if(selfTestRunning == true){
+          selfTest(selftTestState);
+        }
+      }
+      else if(selftTestState == 3){
+        Serial.println("Self Test Complete, heading back to menu");
+        currentCase = 0;
+        selftTestState = 0;
       }
 
     break;
