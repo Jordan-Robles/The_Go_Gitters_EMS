@@ -31,6 +31,7 @@ bool selfTestRunning = false;
 const unsigned long selfTestInterval = 1000; //gives us 3 seconds to read the axis value and determine if the sensor is working
 
 
+
 //Setting input pins for the buttons
 const int button1 = 2; // Mode = toggles between each sub routine 
 const int button2 = 3; // Next = insdie each subroutine we can flicker between different data to be displayed
@@ -115,7 +116,8 @@ float averageArray(float array[], int size){
 
 int selfTest(int testCount){
   currentTime = millis();
-  if(currentTime - previousTime >= selfTestInterval && sampleIndex < 5){ //takes a sample every 1 second till a total of 5 samples is taken
+  //takes a sample every 1 second till a total of 5 samples is taken
+  if(currentTime - previousTime >= selfTestInterval && sampleIndex < 5){ 
     //float reading = analogRead(axis); //uncommet for ADXL
     //bmi160.getAccelData(accel);
     bmi160.getAccelGyroData(accel);
@@ -133,11 +135,13 @@ int selfTest(int testCount){
 
     if(averageReading > 0.8 && averageReading < 1.2){// x in range of expected x value
       Serial.println("axis Good");
-      selfTestCount[testCount] = 1;
+      //We record the state of each axis in an array that will be used to display which axis isnt working well
+      selfTestCount[testCount-3] = 1; // testCount-3, it is minus 3 as we are taking account the fact that the x axis is indexed by 3 due to gyro 
     }
     else{
       Serial.println(averageReading);
       Serial.println("axis no Good");
+      selfTestCount[testCount-3] = 0;
     } 
     selfTestRunning = false;
     selftTestState += 1;
@@ -151,7 +155,14 @@ void loop() {
   switch(currentCase){
     case 0: // testing BMI160
     if(serialButton() == true){//Self test button pressed == HIGH
-      Serial.println("Self Test initiaed");
+    Serial.println("Self Test initiated");
+    Serial.print("X-Axis\t"); 
+    Serial.println(selfTestCount[0]);
+    Serial.print("Y-Axis\t"); 
+    Serial.println(selfTestCount[1]);
+    Serial.print("Z-Axis\t"); 
+    Serial.println(selfTestCount[2]);
+
       previousTime = millis();
       currentCase = 1; // Test X 
 
