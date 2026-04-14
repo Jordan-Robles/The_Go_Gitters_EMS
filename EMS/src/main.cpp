@@ -9,7 +9,8 @@ EMS Lab 2 Group 2
 //Creating accelerometer object and relvent variables
 DFRobot_BMI160 bmi160;
 const int8_t i2c_addr = 0x69;
-int16_t accel[3] = {0};
+// we declare this to be a size 6 as the frist 3 elements hold the gyro data while accel is the last 3
+int16_t accel[6];
 
 //Setting input pins for the ADXL to the Arduino nano
 const int x = A0;
@@ -24,7 +25,7 @@ float zAxis = 0;
 // Self test stuff
 int selfTestCount[3] = {0}; // used to keep track of seft test pins
 int selftTestState = 0; //used to iterate through each axis test state for now till i develop a function to handle whole sub-Routine
-float Array[3] = {0};
+float Array[5] = {0};
 int sampleIndex = 0;
 bool selfTestRunning = false;
 const unsigned long selfTestInterval = 1000; //gives us 3 seconds to read the axis value and determine if the sensor is working
@@ -65,7 +66,11 @@ void setup() {
   delay(100);
 
   bmi160.softReset();
-  bmi160.I2cInit(i2c_addr);
+  //bmi160.I2cInit(i2c_addr);
+  if (bmi160.I2cInit(i2c_addr) != BMI160_OK) {
+    Serial.println("BMI160 init failed!");
+    while(1);
+  }
 
   // Set pinMode for x, y, z pins as INPUT
   pinMode(x, INPUT);
@@ -98,11 +103,12 @@ bool serialButton(){
 
 
 float averageArray(float array[], int size){
-  long sum = 0;
+  //Helper function to take the average of recorded accelermoter values 
+  float sum = 0.0;
   for(int i = 0; i <size; i++){
     sum = sum + array[i];
   }
-  float average = sum / size;
+  float average = abs(sum / size);
 
   return average;
 }
@@ -111,23 +117,26 @@ int selfTest(int testCount){
   currentTime = millis();
   if(currentTime - previousTime >= selfTestInterval && sampleIndex < 5){ //takes a sample every 1 second till a total of 5 samples is taken
     //float reading = analogRead(axis); //uncommet for ADXL
-    bmi160.getAccelData(accel);
-    float reading = accel[testCount] / 16384.0;
+    //bmi160.getAccelData(accel);
+    bmi160.getAccelGyroData(accel);
+    //float reading = accel[testCount] / 16384.0;
+    float reading = accel[testCount]/16384.0;
+    //we store the readings in an array so that it can be sent off to our averageArray function
     Array[sampleIndex] = reading;
     sampleIndex += 1;
     previousTime = currentTime;
-    Serial.println(reading);
+    Serial.println(abs(reading));
   }
   else if(sampleIndex >= 5){
     float averageReading = averageArray(Array, 5);
     sampleIndex = 0;
 
-    if(averageReading > 0.8 && averageReading < 1.2 && selfTestCount[testCount] == 0){// x in range of expected x value
+    if(averageReading > 0.8 && averageReading < 1.2){// x in range of expected x value
       Serial.println("axis Good");
       selfTestCount[testCount] = 1;
-
     }
     else{
+      Serial.println(averageReading);
       Serial.println("axis no Good");
     } 
     selfTestRunning = false;
@@ -164,7 +173,7 @@ void loop() {
         
         }
         else if(selfTestRunning == true){
-          selfTest(selftTestState);
+          selfTest(3);
         }
       }
 
@@ -181,7 +190,7 @@ void loop() {
         
         }
         else if(selfTestRunning == true){
-          selfTest(selftTestState);
+          selfTest(4);
         }
       }
 
@@ -198,7 +207,7 @@ void loop() {
         
         }
         else if(selfTestRunning == true){
-          selfTest(selftTestState);
+          selfTest(5);
         }
       }
       else if(selftTestState == 3){
