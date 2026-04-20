@@ -88,9 +88,6 @@ void setup() {
   pinMode(led1, OUTPUT);
   pinMode(led2,OUTPUT);
   pinMode(led3,OUTPUT);
-
-
-
 }
 
 
@@ -114,7 +111,7 @@ float averageArray(float array[], int size){
   return average;
 }
 
-int selfTest(int testCount){
+int selfTestData(int testCount){
   currentTime = millis();
   //takes a sample every 1 second till a total of 5 samples is taken
   if(currentTime - previousTime >= selfTestInterval && sampleIndex < 5){ 
@@ -148,6 +145,11 @@ int selfTest(int testCount){
     printed = false;
   }
 }
+
+void selfTest(int state ){
+
+}
+
 
 
 
@@ -184,7 +186,7 @@ void loop() {
         
         }
         else if(selfTestRunning == true){
-          selfTest(3);
+          selfTestData(3);
         }
       }
 
@@ -201,7 +203,7 @@ void loop() {
         
         }
         else if(selfTestRunning == true){
-          selfTest(4);
+          selfTestData(4);
         }
       }
 
@@ -218,7 +220,7 @@ void loop() {
         
         }
         else if(selfTestRunning == true){
-          selfTest(5);
+          selfTestData(5);
         }
       }
       else if(selftTestState == 3){
