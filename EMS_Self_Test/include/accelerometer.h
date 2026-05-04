@@ -7,3 +7,10 @@ DFRobot_BMI160 bmi160;
 const int8_t i2c_addr = 0x69;
 // we declare this to be a size 6 as the frist 3 elements hold the gyro data while accel is the last 3
 int16_t accel[6];
+
+bmi160.softReset();
+//bmi160.I2cInit(i2c_addr);
+if (bmi160.I2cInit(i2c_addr) != BMI160_OK) {
+Serial.println("BMI160 init failed!");
+while(1);
+}
