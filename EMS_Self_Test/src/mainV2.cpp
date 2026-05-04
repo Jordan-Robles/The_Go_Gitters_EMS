@@ -54,7 +54,7 @@ void setup() {
 
   bmi160.softReset();
   //bmi160.I2cInit(i2c_addr);
-  if (bmi160.I2cInit(i2c_addr) != BMI160_OK) {
+  if (!accel_init) {
     Serial.println("BMI160 init failed!");
     while(1);
   }
@@ -96,6 +96,7 @@ void loop() {
     break;
 
     case 1:// Self test Routine
+    
     break;
 
     case 2:// Calibration Routine
