@@ -5,6 +5,11 @@ EMS Lab 2 Group 2
 
 #include <Arduino.h>
 #include <DFRobot_BMI160.h>
+#include <adxl.h>
+#include <selfTest.h>
+#include <stepCounting.h>
+
+
 
 //Creating accelerometer object and relvent variables
 DFRobot_BMI160 bmi160;
