@@ -2,13 +2,16 @@
 #include <math.h>
 #include <adxl.h>
 
+
 class selfTest{
 public:
-    selfTest(const adxl& accel) : accel(accel),ty_Voltage{-325.0, 325, 550} {}
-    int selfTestData(int testCount);
+    selfTest(const adxl& accel) : accel(accel){}
+    int selfTestData(int axis);
 private:
     const adxl& accel;
-    const int STpin = 13;
-    float [3];
+    const int stPin = 13;
+    float minChange[3] = {-0.660, 0.165, 0.165};
+    float maxChange[3] ={-0.165, 0.660, 1.100};
+    float initalVoltage;
 };
 

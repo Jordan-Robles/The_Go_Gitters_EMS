@@ -16,6 +16,11 @@ public:
         return reading;
     }
 
+    float readVoltage(int axis) const{
+        float voltage = analogRead(adxlPins[axis]) * (5.0/1023.0);
+        return voltage;
+    }
+
 protected:
     //this will hold the 0g volatage for each pin, the values will be obtained via calbration
     float voltage_zero[3];
