@@ -8,9 +8,8 @@ float Array[5] = {0};
 int sampleIndex = 0;
 const unsigned long selfTestInterval = 1000; //gives us 3 seconds to read the axis value and determine if the sensor is working
 
-float xOffset = 0.0;
-float yOffset = 0.0;
-float zOffset = 0.0;
+
+int offsetArray[3] = {0, 0, 0};
 
 float oneG = 9.8;
 
@@ -36,15 +35,15 @@ int calibration::calibrationData(int axis){
     float averageReading = averageArray(Array, 5);
 
     if(axis == 0){ //xAxis
-      xOffset = averageReading;
+      offsetArray[axis] = averageReading;
     }
 
     else if(axis == 1){
-      yOffset = averageReading;
+      offsetArray[axis] = averageReading;
     }
 
     else if(axis == 2){
-      zOffset = averageReading - oneG;
+      offsetArray[axis] = averageReading - oneG;
     }    
     sampleIndex = 0;
 
@@ -55,4 +54,6 @@ int calibration::calibrationData(int axis){
     }
 
   }
+
+  return offsetArray[axis];
 }

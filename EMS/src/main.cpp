@@ -4,14 +4,15 @@ EMS Lab 2 Group 2
 */
 
 #include <Arduino.h>
-#include <DFRobot_BMI160.h>
 #include <adxl.h>
 #include <selfTest.h>
 #include <stepCounting.h>
+#include <calibration.h>
 
 
 adxl accel; // Creates the accelerometer object
-selfTest testInstance(accel); // Creates the selfTest instance with the accelerometer
+selfTest selfTestInstance(accel); // Creates the selfTest instance with the accelerometer
+calibration calibrationInstance(accel);
 
 //Setting input pins for the buttons
 const int nextButton = 2; // Mode = toggles between each sub routine 
@@ -68,6 +69,12 @@ bool printed = false;
 //st pin stuff
 int axisWorking[3] = {0,0,0};
 
+
+//calibration
+int offset[3] = {0,0,0};
+
+
+
 bool readButtonDebounced(int pin, bool &stableState, bool &lastReading, unsigned long &lastChangeTime) {
   bool reading = digitalRead(pin);
 
@@ -84,6 +91,31 @@ bool readButtonDebounced(int pin, bool &stableState, bool &lastReading, unsigned
 }
 
 
+void stateHandling(){
+  //This function is for swtiching states through buttons
+  nextPressed = readButtonDebounced(nextButton, nextStableState, nextLastReading, nextLastChangeTime);
+  previousPressed = readButtonDebounced(previousButton, previousStableState, previousLastReading, previousLastChangeTime);
+
+  if (nextPressed == true){
+    if(currentCase >= 0 && currentCase < 3){
+      currentCase = currentCase + 1;
+    }
+    else if(currentCase == 3){
+      currentCase = 0;
+    }
+  }
+
+  else if (previousPressed == true){
+    if(currentCase > 0 && currentCase <= 3){
+      currentCase = currentCase - 1;
+    }
+    else if(currentCase == 0){
+      currentCase = 3;
+    }
+  }
+}
+
+
 
 void setup() {
   Serial.begin(9600); 
@@ -97,9 +129,7 @@ void loop() {
 
       //Reading state of buttons
       actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
-      nextPressed = readButtonDebounced(nextButton, nextStableState, nextLastReading, nextLastChangeTime);
-      previousPressed = readButtonDebounced(previousButton, previousStableState, previousLastReading, previousLastChangeTime);
-
+      stateHandling();
       //Printing welcome stuff to Screen
       //atm its just serial prints
       if(!printed){
@@ -136,10 +166,17 @@ void loop() {
 
     case 1: // Self test Routine
 
-      //Reading state of buttons
+      //State handling
       actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
-      nextPressed = readButtonDebounced(nextButton, nextStableState, nextLastReading, nextLastChangeTime);
-      previousPressed = readButtonDebounced(previousButton, previousStableState, previousLastReading, previousLastChangeTime);
+      stateHandling();
+
+      if(actionPressed == true){
+        if(!printed){
+          Serial.println("Place Device with arrow pointing to * and press action to continue");
+          printed = true;
+          subState = 1;
+        }
+      }
 
       //Once this state is entered, user is prompted with text indicating this is the selftest Routine
       //We wait for teh user to press the action button to contine through the sequence of selfTest
@@ -153,7 +190,7 @@ void loop() {
       }
       //X axis
       if(subState == 1){
-        axisWorking[0] = testInstance.selfTestData(0);
+        axisWorking[0] = selfTestInstance.selfTestData(0);
         if(!printed){
           Serial.println("Place Device with arrow pointing to * and press action to continue");
           printed = true;
@@ -162,7 +199,7 @@ void loop() {
       }
       //Y axis
       else if(subState == 2){
-        axisWorking[1] = testInstance.selfTestData(1);
+        axisWorking[1] = selfTestInstance.selfTestData(1);
         if(!printed){
           Serial.println("Place Device with arrow pointing to * and press action to continue");
           printed = true;
@@ -172,7 +209,7 @@ void loop() {
 
       //Z axis
       else if(subState == 3){
-        axisWorking[2] = testInstance.selfTestData(2);
+        axisWorking[2] = selfTestInstance.selfTestData(2);
         if(!printed){
           Serial.println("Place Device with arrow pointing to * and press action to continue");
           printed = true;
@@ -180,20 +217,18 @@ void loop() {
         }  
       }
 
+      //Exiting and prompting user with options and displays axis in working order
       else if(subState == 4){
         if(!printed){
           Serial.println("results:");
           Serial.println(axisWorking[0]);
           Serial.println(axisWorking[1]);
           Serial.println(axisWorking[2]);
-          Serial.println("press action to restart, or ");
+          Serial.println("press action to restart, or next/previous to exit");
           printed = true;
+          subState = 0;
         }  
-
       }
-
-
-
 
 
 
@@ -202,6 +237,44 @@ void loop() {
 
 
     case 2: // Calibration
+      actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
+      stateHandling();
+
+      if(actionPressed == true){
+        if(!printed){
+          Serial.println("Place Device on flate surface, and press action to start");
+          printed = true;
+          subState = 1;
+        }
+      }
+
+      if(subState == 1){
+        if(actionPressed == true){
+          subState = 2;
+        }
+      }
+      else if(subState == 2){
+        for(int i = 0; i <3; i++){
+          offset[i] = calibrationInstance.calibrationData(i);
+        }
+        subState = 3;
+      }
+
+      //Exiting and prompting user with options and displays calibration data
+      else if(subState == 3){
+        if(!printed){
+          Serial.println("results:");
+          Serial.println(offset[0]);
+          Serial.println(offset[1]);
+          Serial.println(offset[2]);
+          Serial.println("press action to restart, or next/previous to exit");
+          printed = true;
+          subState = 0;
+        }  
+      }
+
+      
+
 
 
 
@@ -209,7 +282,8 @@ void loop() {
 
 
     case 3: // Step tracking
-
+      actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
+      stateHandling();
 
     break;
 
