@@ -41,27 +41,32 @@ unsigned long previousLastChangeTime = 0;
 
 
 //Setting pins for LED
-const int led1 = 2;
-const int led2 = 3;
-const int led3 = 4;
+const int led1 = 5;
+const int led2 = 6;
+const int led3 = 7;
 
 //Setting pins for the GC9A01
 const int DIN = A4;
 const int CLK = A5;
-const int CS = 10;
-const int DC = 9;
+const int CS = 9;
+const int DC = 10;
+const int RES = 8;
+
+
 
 //Time
 unsigned long currentTime =0;
 unsigned long previousTime =0;
 
+//state
 int currentCase = 0; // Set case = 0 to initialise system to starting profile
+int subState = 0; //this is used for handling smaller sub states in the main switch cases
 
 //debugging
 bool printed = false;
 
 //st pin stuff
-int axisWorking[3];
+int axisWorking[3] = {0,0,0};
 
 bool readButtonDebounced(int pin, bool &stableState, bool &lastReading, unsigned long &lastChangeTime) {
   bool reading = digitalRead(pin);
@@ -88,22 +93,110 @@ void loop() {
   switch(currentCase){
 
     
-    case 0: 
+    case 0: //home
+
+      //Reading state of buttons
+      actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
+      nextPressed = readButtonDebounced(nextButton, nextStableState, nextLastReading, nextLastChangeTime);
+      previousPressed = readButtonDebounced(previousButton, previousStableState, previousLastReading, previousLastChangeTime);
+
+      //Printing welcome stuff to Screen
+      //atm its just serial prints
+      if(!printed){
+        Serial.println("Welcome user");
+        Serial.println("Press next to go to self test");
+        Serial.println("Press back to go to step tracking");
+        printed = true;
+      }
+      
+      //Waits for user to action selfTest sequence
+      else if (nextPressed == true){
+        if(!printed){
+          //Inital print to indicate user of current routine page
+          Serial.println("Selftest");
+          printed = true;
+        }
+        currentCase = 1;
+      }
+
+      //goint to Calibration
+      if (previousPressed == true){
+        if(!printed){
+          //Inital print to indicate user of current routine page
+          Serial.println("Calibration");
+          printed = true;
+        }        
+        currentCase = 3;
+      }
+
 
     break;
 
+
+
     case 1: // Self test Routine
 
-      actionPressed = digitalRead(actionButton);
-    
-      if(actionPressed = true){
-        if(!printed){
-          Serial.println("Place Device with arrow pointing to * and press action button to continue");
-          printed = true;
-        }
+      //Reading state of buttons
+      actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
+      nextPressed = readButtonDebounced(nextButton, nextStableState, nextLastReading, nextLastChangeTime);
+      previousPressed = readButtonDebounced(previousButton, previousStableState, previousLastReading, previousLastChangeTime);
 
-        
+      //Once this state is entered, user is prompted with text indicating this is the selftest Routine
+      //We wait for teh user to press the action button to contine through the sequence of selfTest
+
+      if(actionPressed == true){
+        if(!printed){
+          Serial.println("Place Device with arrow pointing to * and press action to continue");
+          printed = true;
+          subState = 1;
+        }
       }
+      //X axis
+      if(subState == 1){
+        axisWorking[0] = testInstance.selfTestData(0);
+        if(!printed){
+          Serial.println("Place Device with arrow pointing to * and press action to continue");
+          printed = true;
+          subState = 2;
+        }
+      }
+      //Y axis
+      else if(subState == 2){
+        axisWorking[1] = testInstance.selfTestData(1);
+        if(!printed){
+          Serial.println("Place Device with arrow pointing to * and press action to continue");
+          printed = true;
+          subState = 2;
+        }  
+      }
+
+      //Z axis
+      else if(subState == 3){
+        axisWorking[2] = testInstance.selfTestData(2);
+        if(!printed){
+          Serial.println("Place Device with arrow pointing to * and press action to continue");
+          printed = true;
+          subState = 4;
+        }  
+      }
+
+      else if(subState == 4){
+        if(!printed){
+          Serial.println("results:");
+          Serial.println(axisWorking[0]);
+          Serial.println(axisWorking[1]);
+          Serial.println(axisWorking[2]);
+          Serial.println("press action to restart, or ");
+          printed = true;
+        }  
+
+      }
+
+
+
+
+
+
 
     break;
 

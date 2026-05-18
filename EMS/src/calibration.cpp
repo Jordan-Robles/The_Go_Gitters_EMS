@@ -48,5 +48,11 @@ int calibration::calibrationData(int axis){
     }    
     sampleIndex = 0;
 
+    // reset
+    for(int i = 0; i < 5; i++)
+    {
+      Array[i] = 0;
+    }
+
   }
 }

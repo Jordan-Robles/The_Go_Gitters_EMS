@@ -6,7 +6,7 @@
 class selfTest{
 public:
     selfTest(const adxl& accel) : accel(accel){}
-    int selfTestData(int axis);
+    bool selfTestData(int axis);
 private:
     const adxl& accel;
     const int stPin = 13;

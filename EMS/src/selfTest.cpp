@@ -15,7 +15,7 @@ bool selfTestState = false;
 unsigned long currentTime =0;
 unsigned long previousTime =0;
 
-int selfTest::selfTestData(int axis){
+bool selfTest::selfTestData(int axis){
   currentTime = millis();
   if(selfTestState == false){
     initalVoltage = accel.readVoltage(axis);
