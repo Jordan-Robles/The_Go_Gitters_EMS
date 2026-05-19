@@ -1,17 +1,30 @@
 /*
 EMS Lab 2 Group 2
-
+main file that get uploaded to the arduino for final
 */
 #include <Arduino.h>
 #include <adxl.h>
 #include <selfTest.h>
-#include <stepCounting.h>
+#include <stepCounter.h>
 #include <calibration.h>
 
+//SPI stuff
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7735.h>
+#include <SPI.h>
+
+#define TFT_CS   9
+#define TFT_DC   10
+#define TFT_RST  8
+#define TFT_MOSI A4
+#define TFT_SCLK A5
+
+Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
 
 adxl accel; // Creates the accelerometer object
 selfTest selfTestInstance(accel); // Creates the selfTest instance with the accelerometer
 calibration calibrationInstance(accel);
+stepCounter stepCounterInstance(accel);
 
 //Setting input pins for the buttons
 const int nextButton = 2; // Mode = toggles between each sub routine 
@@ -41,9 +54,9 @@ unsigned long previousLastChangeTime = 0;
 
 
 //Setting pins for LED
-const int led1 = 5;
-const int led2 = 6;
-const int led3 = 7;
+const int led1 = 5; //red
+const int led2 = 6; //yellow
+const int led3 = 7; // green
 
 //Setting pins for the GC9A01
 const int DIN = A4;
@@ -59,7 +72,7 @@ const int RES = 8;
 //static unsigned long previousTime =0;
 
 //state
-int currentCase = 0; // Set case = 0 to initialise system to starting profile
+int currentCase = 3; // Set case = 0 to initialise system to starting profile
 int subState = 0; //this is used for handling smaller sub states in the main switch cases
 
 //debugging
@@ -72,21 +85,32 @@ int axisWorking[3] = {0,0,0};
 //calibration
 int offset[3] = {0,0,0};
 
+//step
+
+int lastValue = -1;
+
 
 
 bool readButtonDebounced(int pin, bool &stableState, bool &lastReading, unsigned long &lastChangeTime) {
   bool reading = digitalRead(pin);
+  bool triggered = false;
 
   if (reading != lastReading) {
     lastChangeTime = millis();
-    lastReading = reading;
   }
 
   if (millis() - lastChangeTime > debounceDelay) {
-    stableState = reading;
+    if(reading != stableState) {
+      stableState = reading;
+      // Changes to HIGH or == LOW depending on if your buttons are active-high or active-low
+      if(stableState == HIGH){
+        triggered = true; // Only trigger ONCE on the edge
+      }
+    }
   }
 
-  return stableState;
+  lastReading = reading;
+  return triggered;
 }
 
 
@@ -102,6 +126,9 @@ void stateHandling(){
     else if(currentCase == 3){
       currentCase = 0;
     }
+    // EVERY TIME you change case, reset these!
+    printed = false; 
+    subState = 0;    
   }
 
   else if (previousPressed == true){
@@ -111,6 +138,9 @@ void stateHandling(){
     else if(currentCase == 0){
       currentCase = 3;
     }
+    // EVERY TIME you change case, reset these!
+    printed = false; 
+    subState = 0;    
   }
 }
 
@@ -118,6 +148,15 @@ void stateHandling(){
 
 void setup() {
   Serial.begin(9600); 
+  pinMode(nextButton, INPUT);
+  pinMode(actionButton, INPUT); 
+  pinMode(previousButton, INPUT); 
+
+  //TFT setup
+  tft.initR(INITR_GREENTAB);
+  tft.fillScreen(ST77XX_BLACK);
+  tft.setTextSize(3);
+  tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);  // bg color auto-erases old text
 }
 
 void loop() {
@@ -137,101 +176,72 @@ void loop() {
         Serial.println("Press back to go to step tracking");
         printed = true;
       }
-      
-      //Waits for user to action selfTest sequence
-      else if (nextPressed == true){
-        if(!printed){
-          //Inital print to indicate user of current routine page
-          Serial.println("Selftest");
-          printed = true;
-        }
-        currentCase = 1;
-      }
-
-      //goint to Calibration
-      if (previousPressed == true){
-        if(!printed){
-          //Inital print to indicate user of current routine page
-          Serial.println("Calibration");
-          printed = true;
-        }        
-        currentCase = 3;
-      }
-
 
     break;
 
 
 
     case 1: // Self test Routine
-
-      //State handling
       actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
       stateHandling();
 
-      if(actionPressed == true){
+      // subState 0: Entry prompt
+      if(subState == 0){
         if(!printed){
-          Serial.println("Place Device with arrow pointing to * and press action to continue");
+          Serial.println("Place Device with arrow pointing to X and press action to continue");
           printed = true;
-          subState = 1;
+        }
+        if(actionPressed == true){  // Waits for user to press button!
+          subState = 1;             // Move to next state
+          printed = false;          // Reset print flag for the next state
         }
       }
-
-      //Once this state is entered, user is prompted with text indicating this is the selftest Routine
-      //We wait for teh user to press the action button to contine through the sequence of selfTest
-
-      if(actionPressed == true){
+      
+      // subState 1: Read X, then prompt to set up Y
+      else if(subState == 1){
         if(!printed){
-          Serial.println("Place Device with arrow pointing to * and press action to continue");
+          // Read X exactly once when entering this state
+          axisWorking[0] = selfTestInstance.selfTestData(0); 
+          Serial.println("Place Device with arrow pointing to Y and press action to continue");
           printed = true;
-          subState = 1;
         }
-      }
-      //X axis
-      if(subState == 1){
-        axisWorking[0] = selfTestInstance.selfTestData(0);
-        if(!printed){
-          Serial.println("Place Device with arrow pointing to * and press action to continue");
-          printed = true;
+        if(actionPressed == true){ 
           subState = 2;
+          printed = false;
         }
       }
-      //Y axis
+
+      // subState 2: Read Y, then prompt to set up Z
       else if(subState == 2){
-        axisWorking[1] = selfTestInstance.selfTestData(1);
         if(!printed){
-          Serial.println("Place Device with arrow pointing to * and press action to continue");
+          axisWorking[1] = selfTestInstance.selfTestData(1);
+          Serial.println("Place Device with arrow pointing to Z and press action to continue");
           printed = true;
-          subState = 2;
+        }
+        if(actionPressed == true){ 
+          subState = 3;
+          printed = false;
         }  
       }
 
-      //Z axis
+      // subState 3: Read Z, then display results
       else if(subState == 3){
-        axisWorking[2] = selfTestInstance.selfTestData(2);
         if(!printed){
-          Serial.println("Place Device with arrow pointing to * and press action to continue");
-          printed = true;
-          subState = 4;
-        }  
-      }
-
-      //Exiting and prompting user with options and displays axis in working order
-      else if(subState == 4){
-        if(!printed){
-          Serial.println("results:");
+          axisWorking[2] = selfTestInstance.selfTestData(2);
+          
+          Serial.println("Results:");
           Serial.println(axisWorking[0]);
           Serial.println(axisWorking[1]);
           Serial.println(axisWorking[2]);
-          Serial.println("press action to restart, or next/previous to exit");
+          Serial.println("Press Action to restart test, or Next/Prev to exit");
           printed = true;
+        }
+        // Wait for action to restart
+        if(actionPressed == true){ 
           subState = 0;
+          printed = false;
         }  
       }
-
-
-
-
     break;
 
 
@@ -239,51 +249,83 @@ void loop() {
       actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
       stateHandling();
 
-      if(actionPressed == true){
+      // subState 0: Prompt user
+      if(subState == 0){
         if(!printed){
-          Serial.println("Place Device on flate surface, and press action to start");
+          Serial.println("Place Device on flat surface, and press action to start");
           printed = true;
-          subState = 1;
         }
-      }
-
-      if(subState == 1){
         if(actionPressed == true){
-          subState = 2;
+          subState = 1;
+          printed = false;
         }
-      }
-      else if(subState == 2){
-        for(int i = 0; i <3; i++){
-          offset[i] = calibrationInstance.calibrationData(i);
-        }
-        subState = 3;
       }
 
-      //Exiting and prompting user with options and displays calibration data
-      else if(subState == 3){
+      // subState 1: Perform calibration
+      else if(subState == 1){
         if(!printed){
-          Serial.println("results:");
+          Serial.println("Calibrating...");
+          for(int i = 0; i <3; i++){
+            offset[i] = calibrationInstance.calibrationData(i);
+          }
+          subState = 2; // Automatically move to results after getting data
+          printed = false; 
+        }
+      }
+
+      // subState 2: Show results and wait for exit/restart
+      else if(subState == 2){
+        if(!printed){
+          Serial.println("Results:");
           Serial.println(offset[0]);
           Serial.println(offset[1]);
           Serial.println(offset[2]);
-          Serial.println("press action to restart, or next/previous to exit");
+          Serial.println("Press action to restart, or next/previous to exit");
           printed = true;
-          subState = 0;
         }  
+        // Wait for action button to run calibration again
+        if(actionPressed == true){
+          subState = 0;
+          printed = false;
+        }
       }
-
-      
-
-
-
-
     break;
+
+
+
+
+    
 
 
     case 3: // Step tracking
       actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
       stateHandling();
 
+      if (!printed) {
+        tft.fillScreen(ST77XX_BLACK);
+        tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+        tft.setTextSize(3);
+        tft.setCursor(0, 0);
+        tft.print("Steps:");
+        printed = true;
+      }
+
+      {  // braces needed to declare variables inside a switch case
+        stepCounterInstance.runStepTrack(); 
+        int myValue = stepCounterInstance.numberOfSteps();
+        Serial.println(myValue);
+
+        if (myValue != lastValue) {
+          tft.setCursor(0, 30);  // below the "Steps:" label
+
+          if (myValue < 10)        tft.print("   ");
+          else if (myValue < 100)  tft.print("  ");
+          else if (myValue < 1000) tft.print(" ");
+
+          tft.print(myValue);
+          lastValue = myValue;
+        }
+      }
     break;
 
   }

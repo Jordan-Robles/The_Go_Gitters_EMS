@@ -13,7 +13,7 @@ public:
         // converts the analog signal to usable volatge value
         float voltage = analogRead(adxlPins[axis]) * (5.0/1023.0);
         //convert the voltage to acceleration, the 0.3V (300mV comes from the senesitivty from adxl datasheet)
-        float reading = (voltage - voltage_zero[axis])/ 0.3;
+        float reading = ((voltage - voltage_zero[axis])/ 0.3);
         return reading;
     }
 
