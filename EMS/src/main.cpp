@@ -250,45 +250,87 @@ void loop() {
       stateHandling();
 
       // subState 0: Prompt user
-      if(subState == 0){
-        if(!printed){
-          Serial.println("Place Device on flat surface, and press action to start");
-          printed = true;
-        }
-        if(actionPressed == true){
-          subState = 1;
-          printed = false;
-        }
-      }
-
-      // subState 1: Perform calibration
-      else if(subState == 1){
-        bool done = calibrationInstance.calibrateAll();
+      if (subState == 0) {
         if (!printed) {
-            Serial.println("Calibrating... keep device flat and still.");
+            tft.fillScreen(ST77XX_BLACK);
+
+            tft.setTextSize(2);
+            tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+            tft.setCursor(0, 0);
+            tft.print("Calibration");
+
+            tft.drawFastHLine(0, 20, 128, ST77XX_WHITE);  // divider line
+
+            tft.setTextSize(1);
+            tft.setCursor(0, 28);
+            tft.println("Please place tracker");
+            tft.println("on a flat surface,");
+            tft.println("then press action.");
+
             printed = true;
         }
-        if (done) {
-            subState = 2;
+        if (actionPressed) {
+            subState = 1;
             printed = false;
         }
       }
 
-      // subState 2: Show results and wait for exit/restart
-      else if(subState == 2){
-        if (!printed) {
-            Serial.println("Results (offsets in g):");
-            Serial.println(accel.getOffset(0));   // X
-            Serial.println(accel.getOffset(1));   // Y
-            Serial.println(accel.getOffset(2));   // Z
-            Serial.println("Press action to recalibrate, or next/previous to exit.");
-            printed = true;
-        }
-        if (actionPressed == true) {
-            calibrationInstance.reset();
-            subState = 0;
-            printed = false;
-        }
+      // subState 1: Running calibration
+      else if (subState == 1) {
+          if (!printed) {
+              tft.fillScreen(ST77XX_BLACK);
+
+              tft.setTextSize(2);
+              tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+              tft.setCursor(0, 0);
+              tft.print("Calibration");
+
+              tft.drawFastHLine(0, 20, 128, ST77XX_WHITE);
+
+              tft.setTextSize(1);
+              tft.setCursor(0, 30);
+              tft.print("Calibrating...");
+
+              printed = true;
+          }
+
+          bool done = calibrationInstance.calibrateAll();
+
+          if (done) {
+              subState = 2;
+              printed = false;
+          }
+      }
+
+      // subState 2: Success screen
+      else if (subState == 2) {
+          if (!printed) {
+              tft.fillScreen(ST77XX_BLACK);
+
+              tft.setTextSize(2);
+              tft.setTextColor(ST77XX_GREEN, ST77XX_BLACK);
+              tft.setCursor(0, 0);
+              tft.print("Calibration");
+
+              tft.drawFastHLine(0, 20, 128, ST77XX_GREEN);
+
+              tft.setTextSize(1);
+              tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+              tft.setCursor(0, 30);
+              tft.println("Successful!");
+              tft.println("");
+              tft.println("Press action to");
+              tft.println("recalibrate, or");
+              tft.println("next/prev to exit.");
+
+              printed = true;
+          }
+
+          if (actionPressed) {
+              calibrationInstance.reset();
+              subState = 0;
+              printed = false;
+          }
       }
     break;
 
