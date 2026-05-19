@@ -2,14 +2,21 @@
 #include <Arduino.h>
 // #include <adxl.h> // (Usually not needed if included in stepCounter.h)
 
-const float Step_Threshold = 0.2;
+const float Step_Threshold = 0.2; //we will be changing this so that the value can be changed
 const int Window_Size = 5;
-const unsigned long Min_Step_Interval = 400;
+const unsigned long Min_Step_Interval = 400; //this will be changing so that the value can be changed, this is the minimum time between steps to avoid false positives
 
 float accelBuffer[Window_Size];
 int bufferIndex = 0;
 bool bufferFilled = false;
 unsigned long lastStepTime = 0;
+
+unsigned long magCurrentTime = 0;
+unsigned long magPreviousTime = 0;
+
+float magnitude = 0.0;
+float maxMag = 0.0;
+int magArray[5];
 
 int steps =0;
 
@@ -21,11 +28,29 @@ int stepCounter::numberOfSteps(){
     return steps;
 }
 
+float stepCounter::maxMagnitude(){
+   magCurrentTime = millis();
+  
+  // Check if the 220ms window has passed
+  if (magCurrentTime - magPreviousTime >= 2000) {
+    // Reset for the next window
+    magPreviousTime = magCurrentTime;
+    maxMag = 0; // Reset max for the new window (or to a baseline value)
+  }
+
+  // Continuously track the max during the current window
+  if (magnitude > maxMag) {
+    maxMag = magnitude;
+  }
+  
+  return maxMag;
+}
+
 // Changing to int since you return 0, 1, 2. (Make sure you change it in stepCounter.h too!)
 int stepCounter::runStepTrack() { 
     // Assuming accel.xAccel() is meant instead of accel.read() for the X axis
-    float magnitude = sqrt(accel.read(0)*accel.read(0) + accel.read(1)*accel.read(1) + accel.read(2)*accel.read(2));
-
+    magnitude = sqrt(accel.read(0)*accel.read(0) + accel.read(1)*accel.read(1) + accel.read(2)*accel.read(2));
+    //Serial.println(magnitude);
     accelBuffer[bufferIndex] = magnitude;
     bufferIndex = (bufferIndex + 1) % Window_Size;
     if (bufferIndex == 0) bufferFilled = true;
