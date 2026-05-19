@@ -1,10 +1,11 @@
+#pragma once
 #include <Arduino.h>
 
 
 class adxl{
 public:
 
-    adxl(): adxlPins{A0, A1, A2}, voltage_zero{1.5, 1.5, 1.5} {}
+    adxl(): voltage_zero{1.5, 1.5, 1.5}, adxlPins{A0, A1, A2} {}
     
     //the read function will allow classes to call the reading from the adxl
     //where int 1, 2, 3 are ampped to x, y, z respectively 

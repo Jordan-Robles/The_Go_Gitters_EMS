@@ -1,5 +1,6 @@
+#pragma once
 #include <Arduino.h>
-#include <math.h>
+#include <helper_math.h>
 #include <adxl.h>
 
 

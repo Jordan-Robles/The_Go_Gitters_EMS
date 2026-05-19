@@ -2,7 +2,6 @@
 EMS Lab 2 Group 2
 
 */
-
 #include <Arduino.h>
 #include <adxl.h>
 #include <selfTest.h>
@@ -56,8 +55,8 @@ const int RES = 8;
 
 
 //Time
-unsigned long currentTime =0;
-unsigned long previousTime =0;
+//static unsigned long currentTime =0;
+//static unsigned long previousTime =0;
 
 //state
 int currentCase = 0; // Set case = 0 to initialise system to starting profile

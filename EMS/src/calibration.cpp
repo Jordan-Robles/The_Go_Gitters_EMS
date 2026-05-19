@@ -4,19 +4,16 @@
 #include <adxl.h>
 
 
-float Array[5] = {0};
-int sampleIndex = 0;
-const unsigned long selfTestInterval = 1000; //gives us 3 seconds to read the axis value and determine if the sensor is working
-
+static float Array[5] = {0};
+static int sampleIndex = 0;
+static const unsigned long selfTestInterval = 1000; //gives us 3 seconds to read the axis value and determine if the sensor is working
+static unsigned long currentTime =0;
+static unsigned long previousTime =0;
 
 int offsetArray[3] = {0, 0, 0};
 
 float oneG = 9.8;
 
-
-// Time
-unsigned long currentTime =0;
-unsigned long previousTime =0;
 
 int calibration::calibrationData(int axis){
   currentTime = millis();

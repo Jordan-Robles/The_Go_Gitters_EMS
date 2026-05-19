@@ -1,11 +1,11 @@
-
+#include <adxl.h>
 #include <Arduino.h>
 #include <selfTest.h>
-#include <math.h>
-#include <adxl.h>
+#include <helper_math.h>
+
 
 // Self test stuff
-int axisWorking = 0; // used to keep track of seft test pins
+int st_axisWorking = 0; // used to keep track of seft test pins
 float Array[5] = {0};
 int sampleIndex = 0;
 const unsigned long selfTestInterval = 500;
@@ -42,17 +42,17 @@ bool selfTest::selfTestData(int axis){
     if((averageReading - initalVoltage) >= minChange[axis] && (averageReading - initalVoltage) <= maxChange[axis]){// x in range of expected x value
       Serial.println("axis Good");
       //We record the state of each axis in an array that will be used to display which axis isnt working well
-      axisWorking = true;
+      st_axisWorking = true;
       selfTestState = false;
       digitalWrite(stPin, HIGH);
     }
     else{
       Serial.println(averageReading);
       Serial.println("axis no Good");
-      axisWorking = false;
+      st_axisWorking = false;
       selfTestState = false;
       digitalWrite(stPin, HIGH);
     } 
   }
-  return axisWorking;
+  return st_axisWorking;
 }
