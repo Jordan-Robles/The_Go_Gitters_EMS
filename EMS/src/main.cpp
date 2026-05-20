@@ -72,7 +72,7 @@ const int RES = 8;
 //static unsigned long previousTime =0;
 
 //state
-int currentCase = 3; // Set case = 0 to initialise system to starting profile
+int currentCase = 0; // Set case = 0 to initialise system to starting profile
 int subState = 0; //this is used for handling smaller sub states in the main switch cases
 
 //debugging
@@ -120,28 +120,31 @@ void stateHandling(){
   previousPressed = readButtonDebounced(previousButton, previousStableState, previousLastReading, previousLastChangeTime);
 
   if (nextPressed == true){
-    if(currentCase >= 0 && currentCase < 3){
+    if(currentCase >= 0 && currentCase < 2){
       currentCase = currentCase + 1;
     }
-    else if(currentCase == 3){
+    else if(currentCase == 2){
       currentCase = 0;
     }
     // EVERY TIME you change case, reset these!
     printed = false; 
     subState = 0;    
+    tft.fillScreen(ST77XX_BLACK);
   }
 
   else if (previousPressed == true){
-    if(currentCase > 0 && currentCase <= 3){
+    if(currentCase > 0 && currentCase <= 2){
       currentCase = currentCase - 1;
     }
     else if(currentCase == 0){
-      currentCase = 3;
+      currentCase = 2;
     }
     // EVERY TIME you change case, reset these!
     printed = false; 
-    subState = 0;    
+    subState = 0;   
+    tft.fillScreen(ST77XX_BLACK); 
   }
+
 }
 
 
@@ -160,30 +163,49 @@ void setup() {
 }
 
 void loop() {
+  stateHandling();
+  actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
+
   switch(currentCase){
-
-    
     case 0: //home
-
-      //Reading state of buttons
-      actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
-      stateHandling();
-      //Printing welcome stuff to Screen
-      //atm its just serial prints
-      if(!printed){
-        Serial.println("Welcome user");
-        Serial.println("Press next to go to self test");
-        Serial.println("Press back to go to step tracking");
+      /*
+      This is the home screen, it will display the Steps, text at the bottom right corenr indicating
+      what each button colour correspeonds to.
+      */
+    
+      if (!printed) {
+        tft.fillScreen(ST77XX_BLACK);
+        tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+        tft.setTextSize(2); //button legend size 1.2
+        tft.setCursor(35, 10);
+        tft.print("Steps");
         printed = true;
       }
+
+      {  // braces needed to declare variables inside a switch case
+        stepCounterInstance.runStepTrack(); 
+        stepCounterInstance.maxMagnitude();
+
+        int myValue = stepCounterInstance.numberOfSteps();
+
+        if (myValue != lastValue) {
+          tft.setCursor(60, 40);  // below the "Steps:" label
+          // tft.drawLine(startX, startY, endX, endY, color);
+          tft.drawLine(30, 25, 95, 25, ST77XX_WHITE); //Line under the text
+
+          tft.setTextSize(3); 
+          tft.print(myValue);
+          lastValue = myValue;
+        }
+      }
+     
+      
 
     break;
 
 
 
     case 1: // Self test Routine
-      actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
-      stateHandling();
 
       // subState 0: Entry prompt
       if(subState == 0){
@@ -246,9 +268,7 @@ void loop() {
 
 
     case 2: // Calibration
-      actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
-      stateHandling();
-
+      
       // subState 0: Prompt user
       if (subState == 0) {
         if (!printed) {
@@ -334,44 +354,8 @@ void loop() {
       }
     break;
 
-
-
-
-    
-
-
-    case 3: // Step tracking
-      actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
-      stateHandling();
-
-      if (!printed) {
-        tft.fillScreen(ST77XX_BLACK);
-        tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
-        tft.setTextSize(3);
-        tft.setCursor(0, 0);
-        tft.print("Steps:");
-        printed = true;
-      }
-
-      {  // braces needed to declare variables inside a switch case
-        stepCounterInstance.runStepTrack(); 
-        int myValue = stepCounterInstance.numberOfSteps();
-        Serial.println(myValue);
-
-        if (myValue != lastValue) {
-          tft.setCursor(0, 30);  // below the "Steps:" label
-
-          if (myValue < 10)        tft.print("   ");
-          else if (myValue < 100)  tft.print("  ");
-          else if (myValue < 1000) tft.print(" ");
-
-          tft.print(myValue);
-          lastValue = myValue;
-        }
-      }
-    break;
-
   }
 }
+
 
 
