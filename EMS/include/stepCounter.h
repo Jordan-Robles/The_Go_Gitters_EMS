@@ -9,6 +9,7 @@ public:
     int runStepTrack();
     int numberOfSteps();
     void resetStepTrack();
+    float maxMagnitude();
     
 private:
     const adxl& accel; // Declare the member variable here
