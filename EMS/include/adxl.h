@@ -5,8 +5,17 @@
 class adxl{
 public:
 
-    adxl(): voltage_zero{1.5, 1.5, 1.5}, adxlPins{A0, A1, A2} {}
+    adxl(): voltage_zero{1.5, 1.5, 1.5}, adxlPins{A0, A1, A2}, swOffset{0.0f, 0.0f, 0.0f} {}
     
+    // Set a per-axis software offset (in g). Calibration calls this.
+    void setOffset(int axis, float offset) {
+        swOffset[axis] = offset;
+    }
+
+    float getOffset(int axis) const {
+        return swOffset[axis];
+    }
+
     //the read function will allow classes to call the reading from the adxl
     //where int 1, 2, 3 are ampped to x, y, z respectively 
     float read(int axis) const{ 
@@ -14,7 +23,7 @@ public:
         float voltage = analogRead(adxlPins[axis]) * (5.0/1023.0);
         //convert the voltage to acceleration, the 0.3V (300mV comes from the senesitivty from adxl datasheet)
         float reading = ((voltage - voltage_zero[axis])/ 0.3);
-        return reading;
+        return reading - swOffset[axis];
     }
 
     float readVoltage(int axis) const{
@@ -29,6 +38,6 @@ protected:
 
 private:
     const int adxlPins[3];
-
+    float swOffset[3]; 
 };
 

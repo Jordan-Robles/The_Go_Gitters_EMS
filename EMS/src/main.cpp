@@ -263,30 +263,31 @@ void loop() {
 
       // subState 1: Perform calibration
       else if(subState == 1){
-        if(!printed){
-          Serial.println("Calibrating...");
-          for(int i = 0; i <3; i++){
-            offset[i] = calibrationInstance.calibrationData(i);
-          }
-          subState = 2; // Automatically move to results after getting data
-          printed = false; 
+        bool done = calibrationInstance.calibrateAll();
+        if (!printed) {
+            Serial.println("Calibrating... keep device flat and still.");
+            printed = true;
+        }
+        if (done) {
+            subState = 2;
+            printed = false;
         }
       }
 
       // subState 2: Show results and wait for exit/restart
       else if(subState == 2){
-        if(!printed){
-          Serial.println("Results:");
-          Serial.println(offset[0]);
-          Serial.println(offset[1]);
-          Serial.println(offset[2]);
-          Serial.println("Press action to restart, or next/previous to exit");
-          printed = true;
-        }  
-        // Wait for action button to run calibration again
-        if(actionPressed == true){
-          subState = 0;
-          printed = false;
+        if (!printed) {
+            Serial.println("Results (offsets in g):");
+            Serial.println(accel.getOffset(0));   // X
+            Serial.println(accel.getOffset(1));   // Y
+            Serial.println(accel.getOffset(2));   // Z
+            Serial.println("Press action to recalibrate, or next/previous to exit.");
+            printed = true;
+        }
+        if (actionPressed == true) {
+            calibrationInstance.reset();
+            subState = 0;
+            printed = false;
         }
       }
     break;

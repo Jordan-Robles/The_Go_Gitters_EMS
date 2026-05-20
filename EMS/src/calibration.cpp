@@ -1,56 +1,84 @@
 #include <Arduino.h>
 #include <calibration.h>
 #include <math.h>
-#include <adxl.h>
+
+// Physics:
+//   Device flat on a surface → gravity is entirely in +Z.
+//   Expected readings: X = 0g, Y = 0g, Z = 1g
+//
+//   Offsets applied to adxl:
+//     offset_x = avg_x          (remove any bias from 0)
+//     offset_y = avg_y          (remove any bias from 0)
+//     offset_z = avg_z - 1.0f   (shift Z so it reads 1g not 1g+bias)
+//
+//   After correction: sqrt(read(0)^2 + read(1)^2 + read(2)^2) == 1.0
 
 
-static float Array[5] = {0};
-static int sampleIndex = 0;
-static const unsigned long selfTestInterval = 1000; //gives us 3 seconds to read the axis value and determine if the sensor is working
-static unsigned long currentTime =0;
-static unsigned long previousTime =0;
+bool calibration::calibrateAll() {
+    if (calibrated) return true;   // already done — nothing to do
 
-int offsetArray[3] = {0, 0, 0};
+    unsigned long now = millis();
 
-float oneG = 9.8;
+    // Collect one simultaneous 3-axis sample every CAL_SAMPLE_INTERVAL_MS
+    if ((now - previousTime >= CAL_SAMPLE_INTERVAL_MS) && (sampleIndex < CAL_NUM_SAMPLES)) {
+        for (int axis = 0; axis < 3; axis++) {
+            samples[axis][sampleIndex] = accel.read(axis);
+        }
+        sampleIndex++;
+        previousTime = now;
 
-
-int calibration::calibrationData(int axis){
-  currentTime = millis();
-  //------takes a sample every 1 second till a total of 5 samples is taken------
-  if(currentTime - previousTime >= selfTestInterval && sampleIndex < 5){ 
-
-    float reading = accel.read(axis);
-    //we store the readings in an array so that it can be sent off to our averageArray function
-    Array[sampleIndex] = reading;
-    sampleIndex += 1;
-    previousTime = currentTime;
-    Serial.println(reading);
-  }
-  //------After smaples taken------
-  else if(sampleIndex >= 5){
-    float averageReading = averageArray(Array, 5);
-
-    if(axis == 0){ //xAxis
-      offsetArray[axis] = averageReading;
+        Serial.print("Cal sample ");
+        Serial.print(sampleIndex);
+        Serial.print("/");
+        Serial.println(CAL_NUM_SAMPLES);
     }
 
-    else if(axis == 1){
-      offsetArray[axis] = averageReading;
+    // Once all samples are in, compute and apply offsets
+    if (sampleIndex >= CAL_NUM_SAMPLES) {
+        computeAndApplyOffsets();
+        return true;
     }
 
-    else if(axis == 2){
-      offsetArray[axis] = averageReading - oneG;
-    }    
+    return false;
+}
+
+void calibration::computeAndApplyOffsets() {
+    float avg[3] = {0.0f, 0.0f, 0.0f};
+
+    for (int axis = 0; axis < 3; axis++) {
+        for (int i = 0; i < CAL_NUM_SAMPLES; i++) {
+            avg[axis] += samples[axis][i];
+        }
+        avg[axis] /= CAL_NUM_SAMPLES;
+    }
+
+    // X and Y should read 0g when flat → offset = measured average
+    // Z should read 1g when flat     → offset = measured average - 1.0
+    accel.setOffset(0, avg[0]);
+    accel.setOffset(1, avg[1]);
+    accel.setOffset(2, avg[2] - 1.0f);
+
+    calibrated = true;
+
+    // Debug: verify resulting magnitude is close to 1
+    float mx = avg[0] - accel.getOffset(0);
+    float my = avg[1] - accel.getOffset(1);
+    float mz = avg[2] - accel.getOffset(2);
+    float magnitude = sqrt(mx*mx + my*my + mz*mz);
+
+    Serial.print("Calibration done. Offsets: X=");
+    Serial.print(accel.getOffset(0)); Serial.print(" Y=");
+    Serial.print(accel.getOffset(1)); Serial.print(" Z=");
+    Serial.println(accel.getOffset(2));
+    Serial.print("Corrected magnitude (expect 1.0): ");
+    Serial.println(magnitude);
+}
+
+void calibration::reset() {
     sampleIndex = 0;
-
-    // reset
-    for(int i = 0; i < 5; i++)
-    {
-      Array[i] = 0;
-    }
-
-  }
-
-  return offsetArray[axis];
+    calibrated  = false;
+    previousTime = 0;
+    for (int axis = 0; axis < 3; axis++)
+        for (int i = 0; i < CAL_NUM_SAMPLES; i++)
+            samples[axis][i] = 0.0f;
 }
