@@ -15,7 +15,7 @@ bool selfTestState = false;
 unsigned long currentTime =0;
 unsigned long previousTime =0;
 
-bool selfTest::selfTestData(int axis){
+int selfTest::selfTestData(int axis){
   currentTime = millis();
   if(selfTestState == false){
     initalVoltage = accel.readVoltage(axis);
@@ -40,6 +40,7 @@ bool selfTest::selfTestData(int axis){
     sampleIndex = 0;
 
     if((averageReading - initalVoltage) >= minChange[axis] && (averageReading - initalVoltage) <= maxChange[axis]){// x in range of expected x value
+      Serial.println(averageReading);
       Serial.println("axis Good");
       //We record the state of each axis in an array that will be used to display which axis isnt working well
       st_axisWorking = true;

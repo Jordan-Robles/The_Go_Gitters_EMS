@@ -55,8 +55,9 @@ void calibration::computeAndApplyOffsets() {
     // X and Y should read 0g when flat → offset = measured average
     // Z should read 1g when flat     → offset = measured average - 1.0
     accel.setOffset(0, avg[0]);
-    accel.setOffset(1, avg[1]);
-    accel.setOffset(2, avg[2] - 1.0f);
+    accel.setOffset(1, avg[1] + 1.0f);
+    accel.setOffset(2, avg[2]);
+    //accel.setOffset(2, avg[2] - 1.0f);
 
     calibrated = true;
 
