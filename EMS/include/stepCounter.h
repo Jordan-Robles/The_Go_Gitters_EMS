@@ -10,8 +10,9 @@ public:
     int numberOfSteps();
     void resetStepTrack();
     float maxMagnitude();
-    void adjustHeight(float height);
     void stepCounterV2(bool calibrated);
+    void paceCalc(bool calibrated);
+    int paceID();
 
     
 private:

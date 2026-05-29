@@ -228,9 +228,9 @@ void loop() {
       {  // braces needed to declare variables inside a switch case
         //stepCounterInstance.runStepTrack(); 
         stepCounterInstance.stepCounterV2(calibrated);
-        stepCounterInstance.maxMagnitude();
+        //stepCounterInstance.maxMagnitude();
       
-        int rawPace = pacingIDInstance.runPaceID();
+        int rawPace = stepCounterInstance.paceID();
 
         // Only update 'pace' if a new window calculation actually occurred
         int pace = lastPace; // Default to previous known state
@@ -528,6 +528,3 @@ void loop() {
 
   }
 }
-
-
-
