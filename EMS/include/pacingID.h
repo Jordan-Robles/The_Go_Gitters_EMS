@@ -8,7 +8,6 @@ class pacingID {
     pacingID(const adxl& accel) : accel(accel) {}
     int runPaceID();
     float getDynamicAccel() const { return _lastDynamicAccel; } // For debugging
-
     private:
     const adxl& accel;
 

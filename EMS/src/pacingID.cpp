@@ -44,7 +44,8 @@ int pacingID::runPaceID() {
     _lastDynamicAccel = dynamicAccel; // Store for debugging
     int pace;
 
-    Serial.println(dynamicAccel); 
+    //Serial.println(avgMagnitude); 
+    Serial.println(accel.read(1));
     
     if (dynamicAccel < THRESH_STATIONARY) {
         pace = 0; // Stationary

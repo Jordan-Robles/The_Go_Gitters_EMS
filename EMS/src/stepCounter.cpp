@@ -2,9 +2,9 @@
 #include <Arduino.h>
 // #include <adxl.h> // (Usually not needed if included in stepCounter.h)
 
-const float Step_Threshold = 0.2; //we will be changing this so that the value can be changed
+float Step_Threshold = 0.15; //we will be changing this so that the value can be changed 0.2 worked pre calibration
 const int Window_Size = 5;
-const unsigned long Min_Step_Interval = 400; //this will be changing so that the value can be changed, this is the minimum time between steps to avoid false positives
+unsigned long Min_Step_Interval = 400; //this will be changing so that the value can be changed, this is the minimum time between steps to avoid false positives
 
 float accelBuffer[Window_Size];
 int bufferIndex = 0;
@@ -20,10 +20,30 @@ int magArray[5];
 
 int steps =0;
 
+// === here is some stuff for Y axis measuring stepcounter ===
+bool wasAboveThreshold = false;
+
+
 void incrementSteps(){
     steps++;
 }
 
+void stepCounter::adjustHeight(float height){
+  if (height<=1.0){
+    Step_Threshold = 0.12;
+    Min_Step_Interval = 300;
+  }
+  else if(height>1.0 && height <=1.7){
+    Step_Threshold = 0.15;
+    Min_Step_Interval = 300;
+  }
+
+  else if(height>1.7 && height <=2.0){
+    Step_Threshold = 0.2;
+    Min_Step_Interval = 400;
+  }
+
+}
 int stepCounter::numberOfSteps(){
     return steps;
 }
@@ -74,7 +94,7 @@ int stepCounter::runStepTrack() {
       return 0;  //idle no led
     }
     else if (accel.read(1) >= 0.0001 && accel.read(1) < 0.5){
-;
+
       return 1;
     }
     else if (accel.read(1) >= 0.5 && accel.read(1) < 0.55){
@@ -92,4 +112,18 @@ void stepCounter::resetStepTrack() { // <--- Added "stepCounter::" wrapper
     steps = 0; // Directly resets your global steps variable to 0
     bufferIndex = 0; // Good practice to reset your buffer tracking too
     bufferFilled = false;
+}
+
+
+void stepCounter::stepCounterV2(bool calibrated) {
+  float rawY = accel.read(1);
+  float threshold = 0.8;
+  if (rawY > threshold && !wasAboveThreshold && millis() - lastStepTime > Min_Step_Interval) {
+    if(calibrated) {
+      incrementSteps();
+      //Serial.println();
+      lastStepTime = millis();
+    }
+  }
+  wasAboveThreshold = (rawY > threshold);
 }

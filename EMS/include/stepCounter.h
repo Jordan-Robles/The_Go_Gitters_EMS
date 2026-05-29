@@ -10,6 +10,9 @@ public:
     int numberOfSteps();
     void resetStepTrack();
     float maxMagnitude();
+    void adjustHeight(float height);
+    void stepCounterV2(bool calibrated);
+
     
 private:
     const adxl& accel; // Declare the member variable here

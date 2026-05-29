@@ -87,7 +87,7 @@ int axisWorking[3] = {0,0,0};
 
 //calibration
 int offset[3] = {0,0,0};
-
+bool calibrated = false;
 //step
 
 int lastValue = -1;
@@ -226,7 +226,8 @@ void loop() {
       }
 
       {  // braces needed to declare variables inside a switch case
-        stepCounterInstance.runStepTrack(); 
+        //stepCounterInstance.runStepTrack(); 
+        stepCounterInstance.stepCounterV2(calibrated);
         stepCounterInstance.maxMagnitude();
       
         int rawPace = pacingIDInstance.runPaceID();
@@ -447,7 +448,7 @@ void loop() {
             tft.setTextSize(2);
             tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
             tft.setCursor(0, 0);
-            tft.print("Calibration");
+            tft.print("Calibratio");
 
             tft.drawFastHLine(0, 20, 128, ST77XX_WHITE);  // divider line
 
@@ -468,12 +469,13 @@ void loop() {
       // subState 1: Running calibration
       else if (subState == 1) {
           if (!printed) {
+            calibrated = true;
               tft.fillScreen(ST77XX_BLACK);
 
               tft.setTextSize(2);
               tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
               tft.setCursor(0, 0);
-              tft.print("Calibration");
+              tft.print("Calibratio");
 
               tft.drawFastHLine(0, 20, 128, ST77XX_WHITE);
 
@@ -492,11 +494,11 @@ void loop() {
           }
       }
 
+
       // subState 2: Success screen
       else if (subState == 2) {
           if (!printed) {
               tft.fillScreen(ST77XX_BLACK);
-
               tft.setTextSize(2);
               tft.setTextColor(ST77XX_GREEN, ST77XX_BLACK);
               tft.setCursor(0, 0);
