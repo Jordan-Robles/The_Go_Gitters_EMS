@@ -8,6 +8,7 @@ class pacingID {
     pacingID(const adxl& accel) : accel(accel) {}
     int runPaceID();
     float getDynamicAccel() const { return _lastDynamicAccel; } // For debugging
+    int paceTracker(int steps); //new pace method used to return pace from the amoint of step taken in a certain time frame
     private:
     const adxl& accel;
 
@@ -34,4 +35,15 @@ class pacingID {
     float _gravityBaseline = 1.0f; // Start with the assumption that we're at rest (1g) and adapt from there
     int _pendingPace = 0; // To hold the next pace to switch to after inactivity
     float _lastDynamicAccel = 0.0f; // For debugging
+
+    //New paceID stuff
+    static constexpr float STATIONARY_INTERVAL = 1000;
+    static constexpr float WALKING_INTERVAL = 500;
+    static constexpr float RUNNING_INTERVAL = 250;
+    unsigned long _stepInterval = 0;
+    unsigned long _startStep = 0;
+    int _currentStep = 0;
+
+
+
 };

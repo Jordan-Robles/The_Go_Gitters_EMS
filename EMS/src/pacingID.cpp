@@ -92,9 +92,61 @@ int pacingID::runPaceID() {
         digitalWrite(PIN_YELLOW, HIGH);
         digitalWrite(PIN_GREEN, HIGH);
     }
-
-
-
-
  return _currentPace;
+}
+
+int pacingID::paceTracker(int steps) {
+    unsigned long now = millis();
+    if(_currentStep != steps){
+        if(_currentStep != 0){
+        
+            _stepInterval = now - _startStep;
+            //running
+            if(_stepInterval <= 400){
+                _currentPace = 2;
+                Serial.println("running");
+            } 
+            //walking
+            else if(_stepInterval <= 800 && _stepInterval > 400){
+                _currentPace = 1;
+                Serial.println("walking");
+            }
+            //stationary
+            else if(_stepInterval > 800){
+                _currentPace = 0;
+                Serial.println("stationary");
+            }
+        }
+        _startStep = now;
+        _currentStep = steps;
+    }
+    if((now - _startStep) > 1200){
+        _currentPace = 0;
+        Serial.println("stationary");
+
+    }
+    if (_currentPace == 0) {
+        digitalWrite(PIN_RED, HIGH);
+        digitalWrite(PIN_YELLOW, LOW);
+        digitalWrite(PIN_GREEN, LOW);
+    } 
+
+    else if (_currentPace == 1) {
+        digitalWrite(PIN_RED, LOW);
+        digitalWrite(PIN_YELLOW, HIGH);
+        digitalWrite(PIN_GREEN, LOW);
+    } 
+
+    else if (_currentPace == 2) {
+        digitalWrite(PIN_RED, LOW);
+        digitalWrite(PIN_YELLOW, LOW);
+        digitalWrite(PIN_GREEN, HIGH);
+    } 
+
+    else {
+        digitalWrite(PIN_RED, LOW);
+        digitalWrite(PIN_YELLOW, LOW);
+        digitalWrite(PIN_GREEN, LOW);
+    }
+    return _currentPace;
 }
