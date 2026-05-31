@@ -104,7 +104,6 @@ int pacingID::paceTracker(int steps) {
             //running
             if(_stepInterval <= 400){
                 _currentPace = 2;
-                Serial.println("running");
             } 
             //walking
             else if(_stepInterval <= 800 && _stepInterval > 400){
@@ -114,7 +113,6 @@ int pacingID::paceTracker(int steps) {
             //stationary
             else if(_stepInterval > 800){
                 _currentPace = 0;
-                Serial.println("stationary");
             }
         }
         _startStep = now;
@@ -122,8 +120,6 @@ int pacingID::paceTracker(int steps) {
     }
     if((now - _startStep) > 1200){
         _currentPace = 0;
-        Serial.println("stationary");
-
     }
     if (_currentPace == 0) {
         digitalWrite(PIN_RED, HIGH);

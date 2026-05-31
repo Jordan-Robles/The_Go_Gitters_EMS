@@ -88,13 +88,31 @@ int axisWorking[3] = {0,0,0};
 //calibration
 int offset[3] = {0,0,0};
 bool calibrated = false;
+float height = 1.0f;
+float lastHeightPrinted = 0.0f;
+
 //step
+
+int stepsTaken = 0;
 
 int lastValue = -1;
 
 //pace
 
 int lastPace = 0;
+
+//exercise
+
+bool startPressed = false;
+bool stopPressed = false;
+int exerciseSteps = 0;
+bool isPaused = false;
+bool pausedDrawn = false;
+//timer stuff
+unsigned long timerStart = 0;
+unsigned long lastTimerUpdate = 0;
+unsigned long elapsedSeconds = 0;
+
 
 
 
@@ -123,10 +141,7 @@ bool readButtonDebounced(int pin, bool &stableState, bool &lastReading, unsigned
 
 void stateHandling(){
   //This function is for swtiching states through buttons
-  nextPressed = readButtonDebounced(nextButton, nextStableState, nextLastReading, nextLastChangeTime);
-  previousPressed = readButtonDebounced(previousButton, previousStableState, previousLastReading, previousLastChangeTime);
-
-  if (nextPressed == true){
+  if (nextPressed == true && subState != 1 ){
     if(currentCase >= 0 && currentCase < 3){
       previousCase = currentCase; // Update previous case before changing
       currentCase = currentCase + 1;
@@ -141,7 +156,7 @@ void stateHandling(){
     tft.fillScreen(ST77XX_BLACK);
   }
 
-  else if (previousPressed == true){
+  else if (previousPressed == true && subState != 1){
     if(currentCase > 0 && currentCase <= 3){
       previousCase = currentCase; // Update previous case before changing
       currentCase = currentCase - 1;
@@ -181,8 +196,12 @@ void setup() {
 }
 
 void loop() {
-  stateHandling();
+  
   actionPressed = readButtonDebounced(actionButton, actionStableState, actionLastReading, actionLastChangeTime);
+  nextPressed = readButtonDebounced(nextButton, nextStableState, nextLastReading, nextLastChangeTime);
+  previousPressed = readButtonDebounced(previousButton, previousStableState, previousLastReading, previousLastChangeTime);
+  stateHandling();
+  Serial.println(subState);
 
   switch(currentCase){
     case 0: //home
@@ -228,14 +247,14 @@ void loop() {
         //stepCounterInstance.stepCounterV2(calibrated);
         stepCounterInstance.maxMagnitude();
     
-        int myValue = stepCounterInstance.numberOfSteps();
-        int rawPace = pacingIDInstance.paceTracker(myValue);
+        stepsTaken = stepCounterInstance.numberOfSteps();
+        int rawPace = pacingIDInstance.paceTracker(stepsTaken);
         //int rawPace = stepCounterInstance.paceID();
 
         // Only update 'pace' if a new window calculation actually occurred
         int pace = lastPace; // Default to previous known state
 
-        if (myValue != lastValue || currentCase !=previousCase) { // Only update display if value changed or if the state has changed
+        if (stepsTaken != lastValue || currentCase !=previousCase) { // Only update display if value changed or if the state has changed
           
           tft.setCursor(55, 40);  // below the "Steps:" label
           // // tft.drawLine(startX, startY, endX, endY, color);
@@ -243,9 +262,9 @@ void loop() {
 
           tft.setTextSize(3); 
           tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
-          tft.print(myValue);
+          tft.print(stepsTaken);
 
-          lastValue = myValue;
+          lastValue = stepsTaken;
         }
         if (rawPace != -1) {
           pace = rawPace; 
@@ -273,62 +292,17 @@ void loop() {
             tft.setTextColor(ST77XX_BLUE, ST77XX_BLACK);
             tft.print("Sprinting  ");
           }
-
-          tft.setTextSize(1);
-          tft.setCursor(55, 70); // Just a guess for coordinates, adjust as needed
-          tft.setTextColor(ST77XX_CYAN, ST77XX_BLACK);
-          tft.print(pacingIDInstance.getDynamicAccel()); 
-
           lastPace = pace;
         }
         previousCase = currentCase;
       }
-     
-      
-
     break;
 
-    case 1:
+    case 1://Exercise
     // subState 0: Prompt user
       if (subState == 0) {
         if (!printed) {
           //Steps heading
-          tft.fillScreen(ST77XX_BLACK);
-          tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
-          tft.setTextSize(2); //button legend size 1.2
-          tft.setCursor(20, 10);
-          tft.print("Exercise");
-          tft.drawLine(15, 25, 115, 25, ST77XX_WHITE); //Line under the text
-
-          //Button legend
-          tft.setTextSize(1); //button legend size 1
-
-          tft.setCursor(80, 120);
-          tft.print("Buttons");
-
-          tft.setCursor(80, 130);
-          tft.setTextColor(ST77XX_GREEN, ST77XX_BLACK);
-          tft.print("Next");
-          tft.setCursor(80, 140);
-          tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
-          tft.print("stop");
-          tft.setCursor(80, 150);
-          tft.setTextColor(ST77XX_RED, ST77XX_BLACK);
-          tft.print("Back");
-          printed = true;
-        }
-
-        
-        if (actionPressed) {
-            subState = 1;
-            printed = false;
-        }
-      }
-
-      // subState 1: Running Exercise
-      else if (subState == 1) {
-          if (!printed) {
-                      //Steps heading
           tft.fillScreen(ST77XX_BLACK);
           tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
           tft.setTextSize(2); //button legend size 1.2
@@ -352,58 +326,200 @@ void loop() {
           tft.setTextColor(ST77XX_RED, ST77XX_BLACK);
           tft.print("Back");
           printed = true;
-
-
-          }
-
-
-          if () {
-              subState = 2;
-              printed = false;
-          }
+        }
+        if (actionPressed) {
+          subState = 1;
+          printed = false;
+          stepsTaken = stepCounterInstance.numberOfSteps(); // snapshot
+          elapsedSeconds = 0;
+          lastValue = -1;
+          lastTimerUpdate = millis();
+          
+        }
       }
 
+      // subState 1: Running Exercise
+      else if (subState == 1) {
 
+        // --- Handle pause state at the TOP, before anything else ---
+        if (isPaused) {
+          if (!pausedDrawn) {
+            tft.setTextSize(1);
+            tft.setCursor(45, 80);
+            tft.setTextColor(ST77XX_RED, ST77XX_BLACK);
+            tft.print("Paused");
+            pausedDrawn = true;
+          }
+
+          // Resume on next button
+          if (nextPressed) {
+            tft.setCursor(45, 80);
+            tft.setTextColor(ST77XX_BLACK, ST77XX_BLACK);
+            tft.print("Paused"); // erase
+            isPaused = false;
+            pausedDrawn = false;
+            lastTimerUpdate = millis();
+          }
+
+          // Stop on previous button
+          if (previousPressed) {
+            printed = false;
+            subState = 2;
+            isPaused = false;
+            pausedDrawn = false;
+            lastTimerUpdate = millis();
+          }
+          return; // Skip the rest of the case this iteration
+        }
+
+        if (actionPressed) {
+          isPaused = true;
+          pausedDrawn = false;
+          return;
+        }
+
+          // 2. Stop button
+        if (previousPressed) {
+          subState = 2;
+          printed = false;
+          return; 
+        }
+        if (!printed) {
+          //Steps heading
+          tft.fillScreen(ST77XX_BLACK);
+          tft.drawLine(15, 30, 115, 30, ST77XX_WHITE); //Line under the text
+
+          //Button legend
+          tft.setTextSize(1); //button legend size 1
+          tft.setCursor(80, 120);
+          tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+          tft.print("Buttons");
+
+          tft.setCursor(80, 130);
+          tft.setTextColor(ST77XX_GREEN, ST77XX_BLACK);
+          tft.print("Start");
+          tft.setCursor(80, 140);
+          tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
+          tft.print("Pause");
+          tft.setCursor(80, 150);
+          tft.setTextColor(ST77XX_RED, ST77XX_BLACK);
+          tft.print("Stop");
+          printed = true;
+
+          //pace
+          tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+          tft.setTextSize(1); //button legend size 1.2
+          tft.setCursor(0, 120);
+          tft.print("Pace");
+        }
+
+        {  // braces needed to declare variables inside a switch case
+          stepCounterInstance.runStepTrack(); 
+          stepCounterInstance.maxMagnitude();
+          exerciseSteps = stepCounterInstance.numberOfSteps() - stepsTaken;
+          int rawPace = pacingIDInstance.paceTracker(stepsTaken);
+          int pace = lastPace; // Default to previous known state
+
+          if (exerciseSteps != lastValue || currentCase !=previousCase) { // Only update display if value changed or if the state has changed
+            tft.setCursor(55, 40);  // below the "Steps:" label
+            tft.setTextSize(3); 
+            tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+            tft.print(exerciseSteps);
+            lastValue = exerciseSteps;
+
+
+            //Printing distacne walked
+            tft.setTextSize(1);
+            tft.setCursor(55, 70); // Just a guess for coordinates, adjust as needed
+            tft.setTextColor(ST77XX_CYAN, ST77XX_BLACK);
+            tft.print(0.0); 
+          }
+          if (rawPace != -1) {
+            pace = rawPace; 
+          }
+          if(pace != lastPace || currentCase !=previousCase){
+            tft.setCursor(0, 130);
+            tft.setTextSize(1); 
+            if (pace == 0) {
+              tft.setTextColor(ST77XX_RED, ST77XX_BLACK);
+              tft.print("Stationary");
+            } 
+
+            else if (pace == 1) {
+              tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
+              tft.print("Walking   ");
+            } 
+
+            else if (pace == 2) {
+              tft.setTextColor(ST77XX_GREEN, ST77XX_BLACK);
+              tft.print("Running   ");
+            } 
+
+            else if (pace == 3) {
+              tft.setTextColor(ST77XX_BLUE, ST77XX_BLACK);
+              tft.print("Sprinting  ");
+            }
+            lastPace = pace;
+          }
+
+          // Update timer every second
+          unsigned long now = millis();
+          if (now - lastTimerUpdate >= 1000) {
+            elapsedSeconds++;
+            lastTimerUpdate = now;
+      
+            // Print timer (overwrite previous value)
+            tft.setTextSize(2);
+            tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
+            // Clear previous timer value
+            tft.fillRect(10, 100, 80, 20, ST77XX_BLACK); // Adjust position/size as needed
+            tft.setCursor(5, 10);
+            tft.print("Time: ");
+            tft.print(elapsedSeconds);
+            tft.print("s");
+          }
+
+          previousCase = currentCase;
+        }
+      }
       // subState 2: Finished Workout
       else if (subState == 2) {
-          if (!printed) {
-            tft.fillScreen(ST77XX_BLACK);
-            tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
-            tft.setTextSize(2); //button legend size 1.2
-            tft.setCursor(35, 10);
-            tft.print("Exercise");
-            tft.drawLine(30, 25, 95, 25, ST77XX_WHITE); //Line under the text
+        if (!printed) {
+          tft.fillScreen(ST77XX_BLACK);
+          tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+          tft.setTextSize(2);
+          tft.setCursor(15, 10);
+          tft.print("Results");
+          tft.drawLine(30, 25, 95, 25, ST77XX_WHITE); //Line under the text
 
-            //Button legend
-            tft.setTextSize(1); //button legend size 1
+          tft.setTextSize(2);
+          tft.setCursor(0, 40);  // below the "Steps:" label
+          tft.print("Steps: ");
+          tft.setCursor(80, 40);  // below the "Steps:" label
+          tft.print(exerciseSteps);
 
-            tft.setCursor(80, 120);
-            tft.print("Buttons");
+          tft.setCursor(0, 70);  // below the "Steps:" label
+          tft.print("Time: ");
+          tft.setCursor(70, 70);  // below the "Steps:" label
+          tft.print(elapsedSeconds);
+  
+          tft.setTextSize(1);
+          tft.setCursor(0, 130);
 
-            tft.setCursor(80, 130);
-            tft.setTextColor(ST77XX_GREEN, ST77XX_BLACK);
-            tft.print("Next");
-            tft.setCursor(80, 140);
-            tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
-            tft.print("Start");
-            tft.setCursor(80, 150);
-            tft.setTextColor(ST77XX_RED, ST77XX_BLACK);
-            tft.print("Back");
-            printed = true;
-          }
-
-          if (actionPressed) {
-              calibrationInstance.reset();
-              subState = 0;
-              printed = false;
-          }
+          tft.println("Press action to");
+          tft.println("Start again, or");
+          tft.println("next/prev to exit.");
+          printed = true;
+        }
+        else if (actionPressed) {
+          calibrationInstance.reset();
+          subState = 0;
+          printed = false;
+        }
       }
-      
-      
     break;
 
     case 2: // Calibration
-      
       // subState 0: Prompt user
       if (subState == 0) {
         if (!printed) {
@@ -425,11 +541,10 @@ void loop() {
             printed = true;
         }
         if (actionPressed) {
-            subState = 1;
-            printed = false;
+          subState = 1;
+          printed = false;
         }
       }
-
       // subState 1: Running calibration
       else if (subState == 1) {
           if (!printed) {
@@ -453,20 +568,75 @@ void loop() {
           bool done = calibrationInstance.calibrateAll();
 
           if (done) {
-              subState = 2;
-              printed = false;
+            tft.fillScreen(ST77XX_BLACK);
+            subState = 2;
+            printed = false;
+            //high value so that it will print the height on the next loop without needing to be refreshed
+            lastHeightPrinted = -9999.0f;
+
           }
       }
 
+      else if(subState == 2){
+        if(nextPressed){
+          height = height + 0.1f;
+          printed = false;
+        }
+        else if(previousPressed){
+          height = height - 0.1f;
+          printed = false;
+        }
+
+        if (!printed) {
+          tft.setTextSize(2);
+          tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+          tft.setCursor(0, 0);
+          tft.print("Height");
+          tft.setCursor(0, 20);
+          tft.print("Adjustment");
+
+          //Button legend
+          tft.setTextSize(1); //button legend size 1
+
+          tft.setCursor(80, 120);
+          tft.print("Buttons");
+
+          tft.setCursor(80, 130);
+          tft.setTextColor(ST77XX_GREEN, ST77XX_BLACK);
+          tft.print("Increase");
+          tft.setCursor(80, 140);
+          tft.setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
+          tft.print("Accept");
+          tft.setCursor(80, 150);
+          tft.setTextColor(ST77XX_RED, ST77XX_BLACK);
+          tft.print("Decrease");
+          printed = true;
+        }
+        
+        if(height != lastHeightPrinted){
+          tft.setTextSize(3);
+          tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+          // Clear the previous value by drawing a filled rectangle over it so we dont have to refresh entire
+          tft.fillRect(70, 50, 60, 24, ST77XX_BLACK); // Adjust width/height as needed
+          tft.setCursor(40, 70);
+          tft.print(height, 1); // 1 decimal place
+          lastHeightPrinted = height;
+        }
+
+        if (actionPressed) {
+          subState = 3;
+          printed = false;
+        }
+      }
 
       // subState 2: Success screen
-      else if (subState == 2) {
+      else if (subState == 3) {
           if (!printed) {
               tft.fillScreen(ST77XX_BLACK);
               tft.setTextSize(2);
               tft.setTextColor(ST77XX_GREEN, ST77XX_BLACK);
               tft.setCursor(0, 0);
-              tft.print("Calibration");
+              tft.print("Calibratio");
 
               tft.drawFastHLine(0, 20, 128, ST77XX_GREEN);
 
