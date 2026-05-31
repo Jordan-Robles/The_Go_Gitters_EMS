@@ -83,6 +83,7 @@ bool printed = false;
 
 //st pin stuff
 int axisWorking[3] = {0,0,0};
+int result = 0;
 
 
 //calibration
@@ -201,6 +202,7 @@ void loop() {
   nextPressed = readButtonDebounced(nextButton, nextStableState, nextLastReading, nextLastChangeTime);
   previousPressed = readButtonDebounced(previousButton, previousStableState, previousLastReading, previousLastChangeTime);
   stateHandling();
+
 
   switch(currentCase){
     case 0: //home
@@ -418,6 +420,7 @@ void loop() {
           exerciseSteps = stepCounterInstance.numberOfSteps() - stepsTaken;
           int rawPace = pacingIDInstance.paceTracker(exerciseSteps);
           int pace = lastPace; // Default to previous known state
+          float distance = stepCounterInstance.distanceTravelled(height);
 
           if (exerciseSteps != lastValue || currentCase !=previousCase) { // Only update display if value changed or if the state has changed
             tft.setCursor(55, 40);  // below the "Steps:" label
@@ -431,7 +434,7 @@ void loop() {
             tft.setTextSize(1);
             tft.setCursor(55, 70); // Just a guess for coordinates, adjust as needed
             tft.setTextColor(ST77XX_CYAN, ST77XX_BLACK);
-            tft.print(0.0); 
+            tft.print(distance, 1); // Print distance with 2 decimal places
           }
           if (rawPace != -1) {
             pace = rawPace; 
@@ -623,6 +626,7 @@ void loop() {
         }
 
         if (actionPressed) {
+          stepCounterInstance.sensitivityAdjustment(height);
           subState = 3;
           printed = false;
         }
@@ -660,145 +664,97 @@ void loop() {
     break;
 
 
-    case 3: // Self test Routine
-
-      // subState 0: Entry prompt for X
+    case 3:
+      // subState 0: Entry prompt
       if(subState == 0){
         if(!printed){
           tft.fillScreen(ST77XX_BLACK);
-          
-          // Header
           tft.setTextSize(2);
           tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
           tft.setCursor(0, 0);
           tft.print("Self Test");
           tft.drawFastHLine(0, 20, 128, ST77XX_WHITE);
-          
-          // Instructions
           tft.setTextSize(1);
           tft.setCursor(0, 28);
-          tft.println("Place device with");
-          tft.println("arrow pointing to");
-          tft.setTextColor(ST77XX_RED, ST77XX_BLACK); // Highlight the axis
-          tft.println("X axis.");
-          tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
-          tft.println("");
-          tft.println("Then press action.");
-          
+          tft.println("Press action to");
+          tft.println("begin self test.");
           printed = true;
         }
-        if(actionPressed == true){  // Waits for user to press button!
-          subState = 1;             // Move to next state
-          printed = false;          // Reset print flag for the next state
+        if(actionPressed){
+          subState = 1;
+          printed = false;
+          selfTestInstance.resetSelfTest();
         }
       }
-      
-      // subState 1: Read X, then prompt to set up Y
+
+      // subState 1: Run all 3 axes sequentially, then show results
       else if(subState == 1){
         if(!printed){
-          // Read X exactly once when entering this state
-          axisWorking[0] = selfTestInstance.selfTestData(0); 
-          
           tft.fillScreen(ST77XX_BLACK);
           tft.setTextSize(2);
           tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
           tft.setCursor(0, 0);
           tft.print("Self Test");
           tft.drawFastHLine(0, 20, 128, ST77XX_WHITE);
-          
           tft.setTextSize(1);
           tft.setCursor(0, 28);
-          tft.println("Place device with");
-          tft.println("arrow pointing to");
-          tft.setTextColor(ST77XX_GREEN, ST77XX_BLACK); // Highlight the axis
-          tft.println("Y axis.");
-          tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
-          tft.println("");
-          tft.println("Then press action.");
-          
+          tft.println("Testing...");
           printed = true;
         }
-        if(actionPressed == true){ 
-          subState = 2;
-          printed = false;
+
+        // currentAxis tracks which axis we are on
+        // run the current axis test every loop
+        result = selfTestInstance.selfTestData(selfTestInstance.currentAxis);
+
+        if(selfTestInstance.selfTestComplete()){
+          axisWorking[selfTestInstance.currentAxis] = result;
+          selfTestInstance.resetSelfTest();
+          selfTestInstance.currentAxis++;
+
+          if(selfTestInstance.currentAxis >= 3){
+            selfTestInstance.currentAxis = 0;
+            subState = 2;
+            printed = false;
+          }
         }
       }
 
-      // subState 2: Read Y, then prompt to set up Z
+      // subState 2: Results
       else if(subState == 2){
         if(!printed){
-          axisWorking[1] = selfTestInstance.selfTestData(1);
-          
-          tft.fillScreen(ST77XX_BLACK);
-          tft.setTextSize(2);
-          tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
-          tft.setCursor(0, 0);
-          tft.print("Self Test");
-          tft.drawFastHLine(0, 20, 128, ST77XX_WHITE);
-          
-          tft.setTextSize(1);
-          tft.setCursor(0, 28);
-          tft.println("Place device with");
-          tft.println("arrow pointing to");
-          tft.setTextColor(ST77XX_BLUE, ST77XX_BLACK); // Highlight the axis
-          tft.println("Z axis.");
-          tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
-          tft.println("");
-          tft.println("Then press action.");
-          
-          printed = true;
-        }
-        if(actionPressed == true){ 
-          subState = 3;
-          printed = false;
-        }  
-      }
-
-      // subState 3: Read Z, then display results
-      else if(subState == 3){
-        if(!printed){
-          axisWorking[2] = selfTestInstance.selfTestData(2);
-          
           tft.fillScreen(ST77XX_BLACK);
           tft.setTextSize(2);
           tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
           tft.setCursor(0, 0);
           tft.print("Results");
           tft.drawFastHLine(0, 20, 128, ST77XX_WHITE);
-          
           tft.setTextSize(1);
           tft.setCursor(0, 28);
-          
-          // Print X result
+
           tft.setTextColor(ST77XX_RED, ST77XX_BLACK);
-          tft.print("X: "); 
+          tft.print("X: ");
           tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
-          tft.println(axisWorking[0]);
-          
-          // Print Y result
+          tft.println(axisWorking[0] ? "Good" : "Fail");
+
           tft.setTextColor(ST77XX_GREEN, ST77XX_BLACK);
-          tft.print("Y: "); 
+          tft.print("Y: ");
           tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
-          tft.println(axisWorking[1]);
-          
-          // Print Z result
+          tft.println(axisWorking[1] ? "Good" : "Fail");
+
           tft.setTextColor(ST77XX_BLUE, ST77XX_BLACK);
-          tft.print("Z: "); 
+          tft.print("Z: ");
           tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
-          tft.println(axisWorking[2]);
-          
+          tft.println(axisWorking[2] ? "Good" : "Fail");
+
           tft.println("");
-          tft.println("Press Action to");
-          tft.println("restart test, or");
-          tft.println("Next/Prev to exit");
-          
+          tft.println("Press action to");
+          tft.println("restart test.");
           printed = true;
         }
-        // Wait for action to restart
-        if(actionPressed == true){ 
+        if(actionPressed){
           subState = 0;
           printed = false;
-        }  
+        }
       }
     break;
   }

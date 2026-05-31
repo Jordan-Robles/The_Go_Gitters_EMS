@@ -13,6 +13,8 @@ public:
     void stepCounterV2(bool calibrated);
     void paceCalc(bool calibrated);
     int paceID();
+    float distanceTravelled(float height);
+    void sensitivityAdjustment(float height);
 
     
 private:
