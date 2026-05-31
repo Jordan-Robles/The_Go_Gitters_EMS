@@ -141,7 +141,7 @@ bool readButtonDebounced(int pin, bool &stableState, bool &lastReading, unsigned
 
 void stateHandling(){
   //This function is for swtiching states through buttons
-  if (nextPressed == true && subState != 1 ){
+  if (nextPressed == true && subState != 1 && !(currentCase == 2 && subState == 2)) { // if next is pressed and we are not in the middle of a workout (substate 1) and we are not in the results page (case 4)
     if(currentCase >= 0 && currentCase < 3){
       previousCase = currentCase; // Update previous case before changing
       currentCase = currentCase + 1;
@@ -156,7 +156,7 @@ void stateHandling(){
     tft.fillScreen(ST77XX_BLACK);
   }
 
-  else if (previousPressed == true && subState != 1){
+  else if (previousPressed == true && subState != 1 && !(currentCase == 2 && subState == 2)){
     if(currentCase > 0 && currentCase <= 3){
       previousCase = currentCase; // Update previous case before changing
       currentCase = currentCase - 1;
@@ -201,7 +201,6 @@ void loop() {
   nextPressed = readButtonDebounced(nextButton, nextStableState, nextLastReading, nextLastChangeTime);
   previousPressed = readButtonDebounced(previousButton, previousStableState, previousLastReading, previousLastChangeTime);
   stateHandling();
-  Serial.println(subState);
 
   switch(currentCase){
     case 0: //home
@@ -417,7 +416,7 @@ void loop() {
           stepCounterInstance.runStepTrack(); 
           stepCounterInstance.maxMagnitude();
           exerciseSteps = stepCounterInstance.numberOfSteps() - stepsTaken;
-          int rawPace = pacingIDInstance.paceTracker(stepsTaken);
+          int rawPace = pacingIDInstance.paceTracker(exerciseSteps);
           int pace = lastPace; // Default to previous known state
 
           if (exerciseSteps != lastValue || currentCase !=previousCase) { // Only update display if value changed or if the state has changed
