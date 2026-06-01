@@ -422,7 +422,7 @@ void loop() {
           int pace = lastPace; // Default to previous known state
           float distance = stepCounterInstance.distanceTravelled(height);
 
-          if (exerciseSteps != lastValue || currentCase !=previousCase) { // Only update display if value changed or if the state has changed
+          if (exerciseSteps != lastValue) { // Only update display if value changed or if the state has changed
             tft.setCursor(55, 40);  // below the "Steps:" label
             tft.setTextSize(3); 
             tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);

@@ -8,7 +8,8 @@ class pacingID {
     pacingID(const adxl& accel) : accel(accel) {}
     int runPaceID();
     float getDynamicAccel() const { return _lastDynamicAccel; } // For debugging
-    int paceTracker(int steps); //new pace method used to return pace from the amoint of step taken in a certain time frame
+    int paceTracker(int steps);
+    float getMagnitude();
     private:
     const adxl& accel;
 

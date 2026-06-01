@@ -95,14 +95,47 @@ int pacingID::runPaceID() {
  return _currentPace;
 }
 
+float pacingID::getMagnitude() {
+    float x = accel.read(0);
+    float y = accel.read(1);
+    float z = accel.read(2);
+    return sqrt(x*x + y*y + z*z);
+}
+
 int pacingID::paceTracker(int steps) {
     unsigned long now = millis();
+
+    float magnitude = getMagnitude();
+        _sum += magnitude;
+    _count += 1;
+    
+    //check over 250ms window
+    if (now - _windowStart < INTERVAL_MS) {
+        return -1; //just in the main write return if pace=-1
+    }
+    
+    //window done,take average
+    float avgMagnitude = 1.0f;
+    if (_count > 0) {
+        avgMagnitude = _sum/_count;
+    }
+
+    //reset window
+    _sum = 0.0f;
+    _count = 0;
+    _windowStart = now;
+
+    _gravityBaseline = (_gravityBaseline * 0.9f) + (avgMagnitude * 0.1f); 
+
+    float dynamicAccel = abs(avgMagnitude - _gravityBaseline); // Subtract the adaptive gravity baseline to focus on movement, take absolute value to treat all movement as positive
+    _lastDynamicAccel = dynamicAccel; // Store for debugging
+
     if(_currentStep != steps){
         if(_currentStep != 0){
         
             _stepInterval = now - _startStep;
             //running
-            if(_stepInterval <= 400){
+            if(_stepInterval <= 400 || dynamicAccel >= THRESH_RUNNING){
                 _currentPace = 2;
             } 
             //walking
@@ -118,9 +151,11 @@ int pacingID::paceTracker(int steps) {
         _startStep = now;
         _currentStep = steps;
     }
-    if((now - _startStep) > 1200){
+    if((now - _startStep) > 1200 && dynamicAccel < THRESH_RUNNING){
         _currentPace = 0;
     }
+
+
     if (_currentPace == 0) {
         digitalWrite(PIN_RED, HIGH);
         digitalWrite(PIN_YELLOW, LOW);

@@ -5,7 +5,7 @@
 float Step_Threshold = 0.12; //we will be changing this so that the value can be changed 0.2 worked pre calibration
 //0.15 works
 const int Window_Size = 5;
-unsigned long Min_Step_Interval = 400; //this will be changing so that the value can be changed, this is the minimum time between steps to avoid false positives
+unsigned long Min_Step_Interval = 300; //this will be changing so that the value can be changed, this is the minimum time between steps to avoid false positives
 // 400 was gold
 float accelBuffer[Window_Size];
 int bufferIndex = 0;
@@ -163,5 +163,6 @@ void stepCounter::sensitivityAdjustment(float height){
 }
 
 float stepCounter::distanceTravelled(float height){
-  
+  float distance = steps * 0.415 * height; // Average step length is approximately 0.415 times the person's height
+  return distance;
 }
