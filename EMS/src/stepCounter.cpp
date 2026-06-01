@@ -158,8 +158,8 @@ void stepCounter::resetStepTrack() { // <--- Added "stepCounter::" wrapper
 }
 
 void stepCounter::sensitivityAdjustment(float height){
-  Step_Threshold = 0.12 * (height/1.7);
-  Min_Step_Interval = 400 * (height/1.7);
+  Step_Threshold = 0.12 * (height/1.8); // previous was (height/1.7);
+  Min_Step_Interval = 400 * (height/1.8); // previous was (height/1.7);
 }
 
 float stepCounter::distanceTravelled(float height){

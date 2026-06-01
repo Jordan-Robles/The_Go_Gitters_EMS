@@ -19,7 +19,7 @@ class pacingID {
 
     static constexpr float THRESH_STATIONARY = 0.07f;
     static constexpr float THRESH_WALKING    = 0.3f;
-    static constexpr float THRESH_RUNNING    = 0.6f;
+    static constexpr float THRESH_RUNNING    = 1.0f;
 
     static constexpr unsigned long INTERVAL_MS = 250;
     
