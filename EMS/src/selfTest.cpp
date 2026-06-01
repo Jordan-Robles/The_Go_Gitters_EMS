@@ -6,7 +6,7 @@
 
 // Self test stuff
 int st_axisWorking = 0; // used to keep track of seft test pins
-float Array[5] = {0};
+float Array[10] = {0};
 int sampleIndex = 0;
 const unsigned long selfTestInterval = 500;
 bool selfTestState = false;
@@ -33,12 +33,12 @@ int selfTest::selfTestData(int axis){
     Serial.print("Post-ST Y: "); Serial.println(accel.readVoltage(1));
     Serial.print("Post-ST Z: "); Serial.println(accel.readVoltage(2));
     
-    delay(100);
+    delay(200);
     previousTime = millis();
     selfTestState = true;
   }
   //------takes a sample every 1 second till a total of 5 samples is taken------
-  if(currentTime - previousTime >= selfTestInterval && sampleIndex < 5){ 
+  if(currentTime - previousTime >= selfTestInterval && sampleIndex < 10){ 
 
     float reading = accel.readVoltage(axis);
     //we store the readings in an array so that it can be sent off to our averageArray function
@@ -48,8 +48,8 @@ int selfTest::selfTestData(int axis){
     Serial.println(reading);
   }
   //------After smaples taken------
-  else if(sampleIndex >= 5){
-    float averageReading = averageArray(Array, 5);
+  else if(sampleIndex >= 10){
+    float averageReading = averageArray(Array, 10);
     sampleIndex = 0;
 
     delta = averageReading - initalVoltage;
@@ -63,7 +63,7 @@ int selfTest::selfTestData(int axis){
       digitalWrite(stPin, HIGH);
     }
     else{
-      Serial.println(averageReading);
+      Serial.println(delta);
       Serial.println("axis no Good");
       st_axisWorking = false;
       testComplete = true;

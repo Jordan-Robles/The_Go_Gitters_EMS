@@ -13,9 +13,9 @@ class pacingID {
     private:
     const adxl& accel;
 
-    static const int PIN_RED = 5;
-    static const int PIN_YELLOW = 6;
-    static const int PIN_GREEN = 7;
+    static const int PIN_RED = 7;
+    static const int PIN_YELLOW = 5;
+    static const int PIN_GREEN = 6;
 
     static constexpr float THRESH_STATIONARY = 0.07f;
     static constexpr float THRESH_WALKING    = 0.3f;
